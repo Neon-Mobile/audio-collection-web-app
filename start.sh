@@ -32,6 +32,35 @@ pool.query(\`
     wav_s3_key TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT now()
   );
+
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by VARCHAR;
+
+  CREATE TABLE IF NOT EXISTS referral_codes (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+    code VARCHAR(12) NOT NULL UNIQUE,
+    user_id VARCHAR NOT NULL REFERENCES users(id),
+    created_at TIMESTAMP NOT NULL DEFAULT now()
+  );
+
+  CREATE TABLE IF NOT EXISTS room_invitations (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_id VARCHAR NOT NULL REFERENCES rooms(id),
+    invited_by VARCHAR NOT NULL REFERENCES users(id),
+    invited_user_id VARCHAR NOT NULL REFERENCES users(id),
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMP NOT NULL DEFAULT now()
+  );
+
+  CREATE TABLE IF NOT EXISTS notifications (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id VARCHAR NOT NULL REFERENCES users(id),
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    data JSONB,
+    read BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP NOT NULL DEFAULT now()
+  );
 \`).then(() => { console.log('Database tables ready'); pool.end(); })
   .catch(err => { console.error(err); pool.end(); process.exit(1); });
 "

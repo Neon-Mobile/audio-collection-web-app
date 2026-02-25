@@ -20,6 +20,7 @@ export const users = pgTable("users", {
   onboardingData: jsonb("onboarding_data"),
   onboardingCompletedAt: timestamp("onboarding_completed_at"),
   samplesCompletedAt: timestamp("samples_completed_at"),
+  referredBy: varchar("referred_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -72,6 +73,36 @@ export const recordings = pgTable("recordings", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Referral codes table
+export const referralCodes = pgTable("referral_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: varchar("code", { length: 12 }).notNull().unique(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Room invitations table
+export const roomInvitations = pgTable("room_invitations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  roomId: varchar("room_id").notNull().references(() => rooms.id),
+  invitedBy: varchar("invited_by").notNull().references(() => users.id),
+  invitedUserId: varchar("invited_user_id").notNull().references(() => users.id),
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Notifications table
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  data: jsonb("data"),
+  read: boolean("read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Zod schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -99,9 +130,16 @@ export const createRoomSchema = z.object({
   name: z.string().min(1).max(100).optional(),
 });
 
+export const inviteToRoomSchema = z.object({
+  email: z.string().email(),
+});
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Room = typeof rooms.$inferSelect;
 export type Recording = typeof recordings.$inferSelect;
 export type OnboardingSample = typeof onboardingSamples.$inferSelect;
+export type ReferralCode = typeof referralCodes.$inferSelect;
+export type RoomInvitation = typeof roomInvitations.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;

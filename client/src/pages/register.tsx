@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuthContext } from "@/lib/auth-context";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, UserPlus } from "lucide-react";
 
 export default function Register() {
   const [username, setUsername] = useState("");
@@ -15,6 +16,19 @@ export default function Register() {
   const { register, isRegisterPending, user } = useAuthContext();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const refCode = searchParams.get("ref");
+
+  const { data: referralInfo } = useQuery<{ valid: boolean; referrerName: string } | null>({
+    queryKey: ["/api/referrals/validate", refCode],
+    queryFn: async () => {
+      const res = await fetch(`/api/referrals/validate/${refCode}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!refCode,
+  });
 
   if (user) {
     setLocation("/");
@@ -43,7 +57,7 @@ export default function Register() {
     }
 
     try {
-      await register({ username, password });
+      await register({ username, password, referralCode: refCode || undefined });
       setLocation("/onboarding");
     } catch (err: any) {
       toast({
@@ -62,6 +76,12 @@ export default function Register() {
           <CardDescription>Register to join the audio collection platform</CardDescription>
         </CardHeader>
         <CardContent>
+          {referralInfo?.valid && (
+            <div className="mb-4 p-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center gap-2">
+              <UserPlus className="h-4 w-4 text-primary flex-shrink-0" />
+              <span className="text-sm">Invited by <strong>{referralInfo.referrerName}</strong></span>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">Email</Label>

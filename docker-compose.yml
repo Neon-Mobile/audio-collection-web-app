@@ -28,6 +28,8 @@ services:
       AWS_S3_BUCKET: ${AWS_S3_BUCKET:-web-app-call-recordings}
       AWS_REGION: ${AWS_REGION:-us-west-2}
       SESSION_SECRET: ${SESSION_SECRET}
+      SES_FROM_EMAIL: ${SES_FROM_EMAIL:-noreply@neon.audio}
+      APP_URL: ${APP_URL:-https://neon.audio}
       NODE_ENV: production
 
   caddy:

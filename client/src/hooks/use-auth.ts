@@ -34,7 +34,7 @@ export function useAuth() {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (data: { username: string; password: string }) => {
+    mutationFn: async (data: { username: string; password: string; referralCode?: string }) => {
       const res = await apiRequest("POST", "/api/auth/register", data);
       return res.json();
     },

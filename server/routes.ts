@@ -3,10 +3,11 @@ import type { Server } from "http";
 import passport from "passport";
 import { storage } from "./storage";
 import { requireAuth, requireApproved, requireAdmin, hashPassword } from "./auth";
-import { loginSchema, onboardingSchema, createRoomSchema } from "@shared/schema";
+import { loginSchema, onboardingSchema, createRoomSchema, inviteToRoomSchema } from "@shared/schema";
 import { createDailyRoom, createMeetingToken } from "./daily";
 import { generateUploadUrl, generateDownloadUrl } from "./s3";
 import { processRecording, processOnboardingSample } from "./process-recording";
+import { sendRoomInvitationEmail } from "./email";
 
 const S3_BUCKET = process.env.AWS_S3_BUCKET || "web-app-call-recordings";
 
@@ -34,6 +35,22 @@ export async function registerRoutes(
         password: hashedPassword,
       });
 
+      // Handle referral code if provided
+      const { referralCode } = req.body;
+      if (referralCode) {
+        const referral = await storage.getReferralCodeByCode(referralCode);
+        if (referral) {
+          await storage.updateUser(user.id, { referredBy: referral.userId });
+          await storage.createNotification({
+            userId: referral.userId,
+            type: "referral_registered",
+            title: "Your friend registered!",
+            message: `${parsed.data.username} signed up using your referral link.`,
+            data: { referredUserId: user.id },
+          });
+        }
+      }
+
       req.login(
         {
           id: user.id,
@@ -43,6 +60,7 @@ export async function registerRoutes(
           onboardingData: user.onboardingData,
           onboardingCompletedAt: user.onboardingCompletedAt,
           samplesCompletedAt: user.samplesCompletedAt,
+          referredBy: user.referredBy,
           createdAt: user.createdAt,
         },
         (err) => {
@@ -412,6 +430,162 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Download WAV error:", error);
       res.status(500).json({ error: "Failed to generate download URL" });
+    }
+  });
+
+  // ── Referral Routes ─────────────────────────────────────────
+
+  app.post("/api/referrals/code", requireApproved, async (req, res) => {
+    try {
+      let code = await storage.getReferralCodeByUser(req.user!.id);
+      if (!code) {
+        code = await storage.createReferralCode(req.user!.id);
+      }
+      const appUrl = process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
+      res.json({ code: code.code, link: `${appUrl}/invite/${code.code}` });
+    } catch (error) {
+      console.error("Referral code error:", error);
+      res.status(500).json({ error: "Failed to generate referral code" });
+    }
+  });
+
+  app.get("/api/referrals/validate/:code", async (req, res) => {
+    try {
+      const referral = await storage.getReferralCodeByCode(req.params.code as string);
+      if (!referral) {
+        return res.status(404).json({ error: "Invalid referral code" });
+      }
+      const referrer = await storage.getUserById(referral.userId);
+      const firstName = (referrer?.onboardingData as any)?.firstName || "Someone";
+      res.json({ valid: true, referrerName: firstName });
+    } catch (error) {
+      console.error("Validate referral error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ── Invitation Routes ──────────────────────────────────────
+
+  app.post("/api/rooms/:id/invite", requireApproved, async (req, res) => {
+    try {
+      const parsed = inviteToRoomSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
+
+      const room = await storage.getRoomById(req.params.id as string);
+      if (!room) {
+        return res.status(404).json({ error: "Room not found" });
+      }
+
+      if (room.createdBy !== req.user!.id) {
+        return res.status(403).json({ error: "Only the room creator can invite users" });
+      }
+
+      const invitedUser = await storage.getUserByUsername(parsed.data.email);
+      if (!invitedUser) {
+        return res.status(404).json({ error: "No user found with that email. They need to register first." });
+      }
+      if (!invitedUser.approved) {
+        return res.status(400).json({ error: "That user hasn't been approved yet." });
+      }
+      if (invitedUser.id === req.user!.id) {
+        return res.status(400).json({ error: "You can't invite yourself." });
+      }
+
+      const invitation = await storage.createRoomInvitation({
+        roomId: room.id,
+        invitedBy: req.user!.id,
+        invitedUserId: invitedUser.id,
+      });
+
+      const inviterName = (req.user!.onboardingData as any)?.firstName || req.user!.username;
+      await storage.createNotification({
+        userId: invitedUser.id,
+        type: "room_invitation",
+        title: "Room Invitation",
+        message: `${inviterName} invited you to join "${room.name}"`,
+        data: { roomId: room.id, invitationId: invitation.id },
+      });
+
+      // Send email (fire and forget)
+      sendRoomInvitationEmail({
+        to: invitedUser.username,
+        inviterName,
+        roomName: room.name,
+        roomId: room.id,
+      });
+
+      res.status(201).json(invitation);
+    } catch (error) {
+      console.error("Room invitation error:", error);
+      res.status(500).json({ error: "Failed to send invitation" });
+    }
+  });
+
+  app.get("/api/invitations/pending", requireApproved, async (req, res) => {
+    try {
+      const invitations = await storage.getPendingInvitationsForUser(req.user!.id);
+      res.json(invitations);
+    } catch (error) {
+      console.error("Fetch invitations error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/invitations/:id", requireApproved, async (req, res) => {
+    try {
+      const { status } = req.body;
+      if (!status || !["accepted", "declined"].includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+      const invitation = await storage.updateRoomInvitation(req.params.id as string, { status });
+      res.json(invitation);
+    } catch (error) {
+      console.error("Update invitation error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ── Notification Routes ────────────────────────────────────
+
+  app.get("/api/notifications", requireAuth, async (req, res) => {
+    try {
+      const notifs = await storage.getNotificationsByUser(req.user!.id);
+      res.json(notifs);
+    } catch (error) {
+      console.error("Fetch notifications error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/notifications/unread-count", requireAuth, async (req, res) => {
+    try {
+      const count = await storage.getUnreadNotificationCount(req.user!.id);
+      res.json({ count });
+    } catch (error) {
+      console.error("Unread count error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/notifications/:id/read", requireAuth, async (req, res) => {
+    try {
+      await storage.markNotificationRead(req.params.id as string);
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Mark read error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/notifications/read-all", requireAuth, async (req, res) => {
+    try {
+      await storage.markAllNotificationsRead(req.user!.id);
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Mark all read error:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 

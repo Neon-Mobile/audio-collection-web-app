@@ -1,6 +1,7 @@
-import { type User, type Room, type Recording, type OnboardingSample, users, rooms, recordings, onboardingSamples } from "@shared/schema";
+import { type User, type Room, type Recording, type OnboardingSample, type ReferralCode, type RoomInvitation, type Notification, users, rooms, recordings, onboardingSamples, referralCodes, roomInvitations, notifications } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, isNotNull, sql } from "drizzle-orm";
+import { eq, desc, and, isNotNull, sql } from "drizzle-orm";
+import * as crypto from "node:crypto";
 
 export interface IStorage {
   // Users
@@ -39,6 +40,23 @@ export interface IStorage {
   getOnboardingSamplesByUser(userId: string): Promise<OnboardingSample[]>;
   updateOnboardingSample(id: string, data: Partial<Omit<OnboardingSample, "id" | "createdAt">>): Promise<OnboardingSample>;
   getTotalProcessedCount(): Promise<number>;
+
+  // Referral Codes
+  createReferralCode(userId: string): Promise<ReferralCode>;
+  getReferralCodeByUser(userId: string): Promise<ReferralCode | undefined>;
+  getReferralCodeByCode(code: string): Promise<ReferralCode | undefined>;
+
+  // Room Invitations
+  createRoomInvitation(data: { roomId: string; invitedBy: string; invitedUserId: string }): Promise<RoomInvitation>;
+  getPendingInvitationsForUser(userId: string): Promise<(RoomInvitation & { roomName: string; inviterEmail: string })[]>;
+  updateRoomInvitation(id: string, data: Partial<Omit<RoomInvitation, "id" | "createdAt">>): Promise<RoomInvitation>;
+
+  // Notifications
+  createNotification(data: { userId: string; type: string; title: string; message: string; data?: unknown }): Promise<Notification>;
+  getNotificationsByUser(userId: string): Promise<Notification[]>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
+  markNotificationRead(id: string): Promise<void>;
+  markAllNotificationsRead(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -181,6 +199,90 @@ export class DatabaseStorage implements IStorage {
       )::int AS count
     `);
     return (result.rows[0] as any).count;
+  }
+
+  // Referral Codes
+  async createReferralCode(userId: string): Promise<ReferralCode> {
+    const code = crypto.randomBytes(6).toString("base64url").slice(0, 8);
+    const [result] = await db.insert(referralCodes).values({ code, userId }).returning();
+    return result;
+  }
+
+  async getReferralCodeByUser(userId: string): Promise<ReferralCode | undefined> {
+    const [result] = await db.select().from(referralCodes).where(eq(referralCodes.userId, userId));
+    return result;
+  }
+
+  async getReferralCodeByCode(code: string): Promise<ReferralCode | undefined> {
+    const [result] = await db.select().from(referralCodes).where(eq(referralCodes.code, code));
+    return result;
+  }
+
+  // Room Invitations
+  async createRoomInvitation(data: { roomId: string; invitedBy: string; invitedUserId: string }): Promise<RoomInvitation> {
+    const [result] = await db.insert(roomInvitations).values(data).returning();
+    return result;
+  }
+
+  async getPendingInvitationsForUser(userId: string): Promise<(RoomInvitation & { roomName: string; inviterEmail: string })[]> {
+    const rows = await db
+      .select({
+        id: roomInvitations.id,
+        roomId: roomInvitations.roomId,
+        invitedBy: roomInvitations.invitedBy,
+        invitedUserId: roomInvitations.invitedUserId,
+        status: roomInvitations.status,
+        createdAt: roomInvitations.createdAt,
+        roomName: rooms.name,
+        inviterEmail: users.username,
+      })
+      .from(roomInvitations)
+      .innerJoin(rooms, eq(roomInvitations.roomId, rooms.id))
+      .innerJoin(users, eq(roomInvitations.invitedBy, users.id))
+      .where(
+        and(
+          eq(roomInvitations.invitedUserId, userId),
+          eq(roomInvitations.status, "pending")
+        )
+      )
+      .orderBy(desc(roomInvitations.createdAt));
+    return rows;
+  }
+
+  async updateRoomInvitation(id: string, data: Partial<Omit<RoomInvitation, "id" | "createdAt">>): Promise<RoomInvitation> {
+    const [result] = await db.update(roomInvitations).set(data).where(eq(roomInvitations.id, id)).returning();
+    return result;
+  }
+
+  // Notifications
+  async createNotification(data: { userId: string; type: string; title: string; message: string; data?: unknown }): Promise<Notification> {
+    const [result] = await db.insert(notifications).values(data).returning();
+    return result;
+  }
+
+  async getNotificationsByUser(userId: string): Promise<Notification[]> {
+    return db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt))
+      .limit(50);
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(notifications)
+      .where(and(eq(notifications.userId, userId), eq(notifications.read, false)));
+    return result.count;
+  }
+
+  async markNotificationRead(id: string): Promise<void> {
+    await db.update(notifications).set({ read: true }).where(eq(notifications.id, id));
+  }
+
+  async markAllNotificationsRead(userId: string): Promise<void> {
+    await db.update(notifications).set({ read: true }).where(eq(notifications.userId, userId));
   }
 }
 

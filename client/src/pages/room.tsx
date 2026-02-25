@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuthContext } from "@/lib/auth-context";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mic, MicOff, PhoneOff, Copy, ArrowLeft, Circle } from "lucide-react";
+import { Loader2, Mic, MicOff, PhoneOff, Copy, ArrowLeft, Circle, Mail } from "lucide-react";
 import type { Room as RoomType } from "@shared/schema";
 import DailyIframe, { type DailyCall, type DailyParticipant } from "@daily-co/daily-js";
 
@@ -51,6 +54,22 @@ export default function RoomPage() {
   const recordingChunksRef = useRef<Blob[]>([]);
   const localRecordingStartRef = useRef<number | null>(null);
   const localDurationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [inviteEmail, setInviteEmail] = useState("");
+
+  const inviteMutation = useMutation({
+    mutationFn: async ({ roomId, email }: { roomId: string; email: string }) => {
+      const res = await apiRequest("POST", `/api/rooms/${roomId}/invite`, { email });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Invitation sent", description: "Your partner will receive an email and in-app notification." });
+      setInviteEmail("");
+    },
+    onError: (err: Error) => {
+      toast({ title: "Invitation failed", description: err.message, variant: "destructive" });
+    },
+  });
 
   const { data: room, isLoading: roomLoading } = useQuery<RoomType>({
     queryKey: ["/api/rooms", roomId],
@@ -389,6 +408,35 @@ export default function RoomPage() {
                 <Copy className="mr-2 h-4 w-4" />
                 Copy Room Link
               </Button>
+              {room.createdBy === user?.id && !isExpired && (
+                <>
+                  <Separator className="my-3" />
+                  <div className="w-full max-w-xs space-y-2">
+                    <Label className="text-sm">Invite a partner by email</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="email"
+                        placeholder="partner@example.com"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        className="text-sm"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => inviteMutation.mutate({ roomId: roomId!, email: inviteEmail })}
+                        disabled={inviteMutation.isPending || !inviteEmail}
+                      >
+                        {inviteMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Mail className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         ) : callState === "joining" ? (

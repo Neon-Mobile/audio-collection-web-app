@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Copy, LogIn, LogOut, Shield } from "lucide-react";
+import { Loader2, Plus, Copy, LogIn, LogOut, Shield, Link2, Check, X } from "lucide-react";
+import { NotificationBell } from "@/components/notification-bell";
 import type { Room } from "@shared/schema";
 
 function sanitizePreview(name: string): string {
@@ -19,6 +20,14 @@ function sanitizePreview(name: string): string {
     .replace(/[^A-Za-z0-9\-_]/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+interface PendingInvitation {
+  id: string;
+  roomId: string;
+  roomName: string;
+  inviterEmail: string;
+  createdAt: string;
 }
 
 export default function Dashboard() {
@@ -60,6 +69,12 @@ export default function Dashboard() {
     enabled: !!user?.approved,
   });
 
+  const { data: pendingInvitations = [] } = useQuery<PendingInvitation[]>({
+    queryKey: ["/api/invitations/pending"],
+    enabled: !!user?.approved,
+    refetchInterval: 30000,
+  });
+
   const createRoomMutation = useMutation({
     mutationFn: async (name?: string) => {
       const res = await apiRequest("POST", "/api/rooms", { name: name || undefined });
@@ -75,6 +90,34 @@ export default function Dashboard() {
     },
   });
 
+  const referralMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/referrals/code");
+      return res.json();
+    },
+  });
+
+  const acceptInvitation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("PATCH", `/api/invitations/${id}`, { status: "accepted" });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invitations/pending"] });
+    },
+  });
+
+  const declineInvitation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("PATCH", `/api/invitations/${id}`, { status: "declined" });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invitations/pending"] });
+      toast({ title: "Invitation declined" });
+    },
+  });
+
   const handleCreateRoom = (e: React.FormEvent) => {
     e.preventDefault();
     createRoomMutation.mutate(roomName || undefined);
@@ -84,6 +127,13 @@ export default function Dashboard() {
     const url = `${window.location.origin}/room/${roomId}`;
     navigator.clipboard.writeText(url);
     toast({ title: "Link copied", description: "Room link copied to clipboard." });
+  };
+
+  const copyReferralLink = () => {
+    if (referralMutation.data?.link) {
+      navigator.clipboard.writeText(referralMutation.data.link);
+      toast({ title: "Copied!", description: "Referral link copied to clipboard." });
+    }
   };
 
   const handleLogout = async () => {
@@ -99,6 +149,7 @@ export default function Dashboard() {
           <h1 className="text-xl font-semibold">Neon Audio Collection</h1>
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground">{user?.username}</span>
+            <NotificationBell />
             {user?.role === "admin" && (
               <Button variant="outline" size="sm" onClick={() => setLocation("/admin")}>
                 <Shield className="mr-1 h-4 w-4" />
@@ -114,6 +165,44 @@ export default function Dashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-8">
+        {/* Pending Invitations */}
+        {pendingInvitations.length > 0 && (
+          <Card className="border-primary">
+            <CardHeader>
+              <CardTitle className="text-lg">Room Invitations</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {pendingInvitations.map((inv) => (
+                <div key={inv.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                  <div>
+                    <p className="text-sm font-medium">"{inv.roomName}"</p>
+                    <p className="text-xs text-muted-foreground">Invited by {inv.inviterEmail}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        acceptInvitation.mutate(inv.id);
+                        setLocation(`/room/${inv.roomId}`);
+                      }}
+                    >
+                      <Check className="mr-1 h-3 w-3" />
+                      Join
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => declineInvitation.mutate(inv.id)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Create Room */}
         <Card>
           <CardHeader>
@@ -216,6 +305,45 @@ export default function Dashboard() {
                   })}
                 </TableBody>
               </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        <Separator />
+
+        {/* Invite a Friend */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Invite a Friend</CardTitle>
+            <CardDescription>
+              Share your referral link to invite friends to the platform.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!referralMutation.data ? (
+              <Button
+                variant="outline"
+                onClick={() => referralMutation.mutate()}
+                disabled={referralMutation.isPending}
+              >
+                {referralMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Link2 className="mr-2 h-4 w-4" />
+                )}
+                Generate Referral Link
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  value={referralMutation.data.link}
+                  readOnly
+                  className="font-mono text-sm"
+                />
+                <Button variant="outline" onClick={copyReferralLink}>
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>

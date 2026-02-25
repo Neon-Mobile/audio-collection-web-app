@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -13,11 +13,18 @@ import RoomPage from "@/pages/room";
 import Admin from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 
+function InviteRedirect({ params }: { params: { code: string } }) {
+  return <Redirect to={`/register?ref=${params.code}`} />;
+}
+
 function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
+      <Route path="/invite/:code">
+        {(params) => <InviteRedirect params={params} />}
+      </Route>
       <Route path="/onboarding">
         <ProtectedRoute>
           <Onboarding />
