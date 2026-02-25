@@ -168,7 +168,7 @@ export default function TaskPage() {
   // Determine current step
   const hasSession = !!sessionId && !!taskSession;
   const hasPartner = hasSession && taskSession.partnerEmail;
-  const partnerApproved = hasSession && taskSession.partnerStatus === "approved";
+  const partnerApproved = hasSession && (taskSession.partnerStatus === "approved" || taskSession.partnerStatus === "ready");
   const roomCreated = hasSession && taskSession.roomId;
 
   const currentStep = !hasSession
