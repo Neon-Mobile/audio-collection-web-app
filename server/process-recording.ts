@@ -84,8 +84,8 @@ async function processAudioFile(
 }
 
 async function getNextFolderNumber(): Promise<string> {
-  const count = await storage.getProcessedRecordingCount();
-  return String(count + 1).padStart(4, "0");
+  const max = await storage.getMaxProcessedFolderNumber();
+  return String(max + 1).padStart(4, "0");
 }
 
 export async function processRecording(recordingId: string) {

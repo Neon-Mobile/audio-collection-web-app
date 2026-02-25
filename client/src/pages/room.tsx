@@ -3,14 +3,25 @@ import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuthContext } from "@/lib/auth-context";
 import { apiRequest } from "@/lib/queryClient";
+import { TASK_TYPES } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mic, MicOff, PhoneOff, Copy, ArrowLeft, Circle, Mail } from "lucide-react";
+import { Loader2, Mic, MicOff, PhoneOff, Copy, ArrowLeft, Circle, Mail, Info, ChevronDown, ChevronUp } from "lucide-react";
 import type { Room as RoomType } from "@shared/schema";
 import DailyIframe, { type DailyCall, type DailyParticipant } from "@daily-co/daily-js";
 
@@ -21,6 +32,14 @@ interface Participant {
   isLocal: boolean;
   audioOn: boolean;
   userName: string;
+}
+
+interface TaskSession {
+  id: string;
+  taskType: string;
+  userId: string;
+  partnerId: string | null;
+  status: string;
 }
 
 function formatDuration(ms: number): string {
@@ -56,6 +75,8 @@ export default function RoomPage() {
   const localDurationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [inviteEmail, setInviteEmail] = useState("");
+  const [instructionsExpanded, setInstructionsExpanded] = useState(true);
+  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
 
   const inviteMutation = useMutation({
     mutationFn: async ({ roomId, email }: { roomId: string; email: string }) => {
@@ -79,6 +100,33 @@ export default function RoomPage() {
       return res.json();
     },
     enabled: !!roomId,
+  });
+
+  // Fetch task session linked to this room
+  const { data: taskSession } = useQuery<TaskSession | null>({
+    queryKey: ["/api/rooms", roomId, "task-session"],
+    queryFn: async () => {
+      const res = await fetch(`/api/rooms/${roomId}/task-session`, { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!roomId,
+  });
+
+  const taskDef = taskSession ? TASK_TYPES.find((t) => t.id === taskSession.taskType) : null;
+
+  const completeTaskMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const res = await apiRequest("PATCH", `/api/task-sessions/${sessionId}/complete`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Task completed!", description: "Great work. Heading back to your dashboard." });
+      setLocation("/");
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to complete task", description: err.message, variant: "destructive" });
+    },
   });
 
   const updateParticipants = useCallback((callObject: DailyCall) => {
@@ -293,6 +341,11 @@ export default function RoomPage() {
       const processRes = await apiRequest("POST", `/api/recordings/${recId}/process`);
       const { processedFolder } = await processRes.json();
       toast({ title: "Recording processed", description: `Saved to folder ${processedFolder} as WAV.` });
+
+      // Show completion dialog if this room is linked to a task
+      if (taskSession) {
+        setShowCompletionDialog(true);
+      }
     } catch (err: any) {
       toast({
         title: "Upload failed",
@@ -359,7 +412,7 @@ export default function RoomPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="font-semibold">{room.name}</h1>
+            <h1 className="font-semibold">{taskDef ? taskDef.name : room.name}</h1>
             <p className="text-xs text-muted-foreground">
               {callState === "joined" && `${formatDuration(callDuration)} elapsed`}
               {callState === "idle" && (isExpired ? "Room expired" : "Ready to join")}
@@ -391,7 +444,7 @@ export default function RoomPage() {
       </header>
 
       {/* Main content */}
-      <main className="flex-1 flex items-center justify-center p-4">
+      <main className="flex-1 flex flex-col items-center justify-center p-4 gap-4">
         {callState === "idle" || callState === "error" ? (
           <Card className="w-full max-w-md">
             <CardHeader className="text-center">
@@ -400,9 +453,15 @@ export default function RoomPage() {
             </CardHeader>
             <CardContent className="flex flex-col gap-3 items-center">
               {!isExpired && (
-                <Button size="lg" onClick={joinCall} className="w-full max-w-xs">
-                  {error ? "Retry" : "Join Audio Call"}
-                </Button>
+                <>
+                  <Button size="lg" onClick={joinCall} className="w-full max-w-xs">
+                    {error ? "Retry" : "Join Audio Call"}
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center">
+                    <Info className="inline h-3 w-3 mr-1" />
+                    Your audio is not recorded until you press the Record button
+                  </p>
+                </>
               )}
               <Button variant="outline" size="sm" onClick={copyRoomLink}>
                 <Copy className="mr-2 h-4 w-4" />
@@ -445,9 +504,45 @@ export default function RoomPage() {
             <p className="text-muted-foreground">Connecting to call...</p>
           </div>
         ) : (
-          /* Joined state - participant grid */
-          <div className="w-full max-w-3xl">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-8">
+          /* Joined state */
+          <div className="w-full max-w-3xl space-y-4">
+            {/* Task Instructions Panel */}
+            {taskDef && (
+              <Card>
+                <CardHeader
+                  className="py-3 px-4 cursor-pointer"
+                  onClick={() => setInstructionsExpanded(!instructionsExpanded)}
+                >
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-medium">
+                      Task: {taskDef.name}
+                    </CardTitle>
+                    {instructionsExpanded ? (
+                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                </CardHeader>
+                {instructionsExpanded && (
+                  <CardContent className="pt-0 pb-4 px-4 space-y-3">
+                    <p className="text-xs text-muted-foreground">{taskDef.description}</p>
+                    <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground">
+                      {taskDef.instructions.map((instruction, i) => (
+                        <li key={i}>{instruction}</li>
+                      ))}
+                    </ol>
+                    <div className="flex items-start gap-2 p-2 rounded bg-blue-50 dark:bg-blue-950/30 text-xs text-blue-700 dark:text-blue-300">
+                      <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      <span>Recording does not start until you press the Record button. Press Stop when you're done.</span>
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            )}
+
+            {/* Participant grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {participants.map((p) => (
                 <Card key={p.id} className={`text-center ${p.isLocal ? "border-primary" : ""}`}>
                   <CardContent className="pt-6 pb-4">
@@ -498,7 +593,7 @@ export default function RoomPage() {
             ) : (
               <Button variant="outline" size="sm" onClick={startLocalRecording} disabled={isUploading}>
                 <Circle className="mr-2 h-3 w-3" />
-                Record Locally
+                Record
               </Button>
             )}
 
@@ -513,6 +608,34 @@ export default function RoomPage() {
           </div>
         </footer>
       )}
+
+      {/* Task Completion Dialog */}
+      <AlertDialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Recording saved!</AlertDialogTitle>
+            <AlertDialogDescription>
+              Is this task complete, or do you want to record again?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Going</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (taskSession) {
+                  completeTaskMutation.mutate(taskSession.id);
+                }
+              }}
+              disabled={completeTaskMutation.isPending}
+            >
+              {completeTaskMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Mark Task Complete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

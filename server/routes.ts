@@ -315,6 +315,16 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/rooms/:id/task-session", requireAuth, async (req, res) => {
+    try {
+      const sessions = await storage.getTaskSessionsByRoom(req.params.id as string);
+      res.json(sessions[0] || null);
+    } catch (error) {
+      console.error("Fetch room task session error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.post("/api/rooms/:id/token", requireApproved, async (req, res) => {
     try {
       const room = await storage.getRoomById(req.params.id as string);
@@ -821,6 +831,20 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Create task room error:", error);
       res.status(500).json({ error: "Failed to create room for task" });
+    }
+  });
+
+  app.patch("/api/task-sessions/:id/complete", requireApproved, async (req, res) => {
+    try {
+      const session = await storage.getTaskSessionById(req.params.id as string);
+      if (!session || (session.userId !== req.user!.id && session.partnerId !== req.user!.id)) {
+        return res.status(404).json({ error: "Task session not found" });
+      }
+      const updated = await storage.updateTaskSession(session.id, { status: "completed" });
+      res.json(updated);
+    } catch (error) {
+      console.error("Complete task session error:", error);
+      res.status(500).json({ error: "Failed to complete task session" });
     }
   });
 

@@ -32,7 +32,7 @@ export interface IStorage {
   getRecordings(): Promise<Recording[]>;
   getRecordingById(id: string): Promise<Recording | undefined>;
   updateRecording(id: string, data: Partial<Omit<Recording, "id" | "createdAt">>): Promise<Recording>;
-  getProcessedRecordingCount(): Promise<number>;
+  getMaxProcessedFolderNumber(): Promise<number>;
 
   // Onboarding Samples
   createOnboardingSample(data: Omit<OnboardingSample, "id" | "createdAt" | "processedFolder" | "wavS3Key">): Promise<OnboardingSample>;
@@ -170,12 +170,15 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getProcessedRecordingCount(): Promise<number> {
-    const [result] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(recordings)
-      .where(isNotNull(recordings.processedFolder));
-    return result.count;
+  async getMaxProcessedFolderNumber(): Promise<number> {
+    const result = await db.execute(sql`
+      SELECT COALESCE(MAX(val), 0)::int AS max_folder FROM (
+        SELECT processed_folder::int AS val FROM recordings WHERE processed_folder IS NOT NULL
+        UNION ALL
+        SELECT processed_folder::int AS val FROM onboarding_samples WHERE processed_folder IS NOT NULL
+      ) t
+    `);
+    return (result.rows[0] as any).max_folder;
   }
 
   // Onboarding Samples
