@@ -1,0 +1,3 @@
+neon.audio, www.neon.audio {
+	reverse_proxy app:3000
+}
