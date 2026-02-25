@@ -16,6 +16,9 @@ export const TASK_TYPES = [
     id: "whispered-conversation",
     name: "Soft Spoken / Whispered Conversation",
     description: "Have a quiet, whispered conversation with your partner.",
+    hourlyRate: 20,
+    availableUntil: "2026-04-01",
+    requiresPartner: true,
     instructions: [
       "Find a quiet room with minimal background noise.",
       "Speak softly or in a whisper throughout the entire conversation.",
@@ -27,6 +30,9 @@ export const TASK_TYPES = [
     id: "emotional-conversation",
     name: "Highly Emotional Conversation",
     description: "Have an emotionally expressive conversation with your partner.",
+    hourlyRate: 25,
+    availableUntil: "2026-04-01",
+    requiresPartner: true,
     instructions: [
       "Find a comfortable, private space.",
       "Have a conversation that naturally brings out strong emotions — excitement, surprise, frustration, joy.",

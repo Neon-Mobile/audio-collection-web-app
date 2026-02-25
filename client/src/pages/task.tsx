@@ -24,6 +24,8 @@ import {
   LogIn,
   LogOut,
   Shield,
+  DollarSign,
+  Users,
 } from "lucide-react";
 
 interface TaskSession {
@@ -236,6 +238,15 @@ export default function TaskPage() {
         <div>
           <h2 className="text-2xl font-bold">{taskDef.name}</h2>
           <p className="text-muted-foreground mt-1">{taskDef.description}</p>
+          <div className="flex items-center gap-3 mt-2 text-sm">
+            <Badge className="bg-green-100 text-green-800 hover:bg-green-100 font-semibold">
+              ${taskDef.hourlyRate}/hr
+            </Badge>
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <Users className="h-3.5 w-3.5" />
+              {taskDef.requiresPartner ? "Requires Partner" : "Solo"}
+            </span>
+          </div>
         </div>
 
         {/* Progress Steps */}

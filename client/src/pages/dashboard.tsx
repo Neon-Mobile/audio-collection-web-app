@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Copy, LogOut, Shield, Link2, Check, X, ArrowRight, Mic, MessageCircle } from "lucide-react";
+import { Loader2, Copy, LogOut, Shield, Link2, Check, X, ArrowRight, Mic, MessageCircle, DollarSign, Users, Calendar } from "lucide-react";
 import { NotificationBell } from "@/components/notification-bell";
 
 interface PendingInvitation {
@@ -203,34 +203,61 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {/* Task Types */}
+        {/* Available Tasks */}
         <div>
-          <h2 className="text-lg font-semibold mb-4">Recording Tasks</h2>
+          <h2 className="text-lg font-semibold mb-4">Available Tasks</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {TASK_TYPES.map((task) => {
               const Icon = TASK_ICONS[task.id] || Mic;
+              const isExpired = new Date(task.availableUntil) < new Date();
+              const deadlineDate = new Date(task.availableUntil).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              });
               return (
                 <Card
                   key={task.id}
-                  className="cursor-pointer hover:border-primary transition-colors"
-                  onClick={() => setLocation(`/task/${task.id}`)}
+                  className={`transition-colors ${isExpired ? "opacity-50" : "cursor-pointer hover:border-primary"}`}
+                  onClick={() => !isExpired && setLocation(`/task/${task.id}`)}
                 >
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                        <Icon className="h-5 w-5 text-primary" />
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
+                          <Icon className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-base">{task.name}</CardTitle>
+                          <CardDescription className="text-xs mt-0.5">{task.description}</CardDescription>
+                        </div>
                       </div>
-                      <div>
-                        <CardTitle className="text-base">{task.name}</CardTitle>
-                        <CardDescription className="text-xs">{task.description}</CardDescription>
-                      </div>
+                      <Badge className="bg-green-100 text-green-800 hover:bg-green-100 shrink-0 text-sm font-semibold">
+                        ${task.hourlyRate}/hr
+                      </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent className="pt-0">
-                    <Button className="w-full" variant="outline">
-                      Start Task
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
+                  <CardContent className="pt-0 space-y-3">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {isExpired ? (
+                          <span className="text-red-500 font-medium">Expired</span>
+                        ) : (
+                          <>Available until {deadlineDate}</>
+                        )}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        {task.requiresPartner ? "Requires Partner" : "Solo"}
+                      </span>
+                    </div>
+                    {!isExpired && (
+                      <Button className="w-full" variant="outline">
+                        Start Task
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               );
