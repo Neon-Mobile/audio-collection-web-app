@@ -148,38 +148,37 @@ export default function RoomPage() {
     },
   });
 
-  // Attach remote audio tracks to <audio> elements so we can actually hear them
-  const playRemoteAudio = useCallback((callObject: DailyCall) => {
-    const daily = callObject.participants();
-    const activeIds = new Set<string>();
+  // Handle remote audio track started — create <audio> element to play it
+  const handleTrackStarted = useCallback((event: any) => {
+    if (!event?.participant || event.participant.local) return;
+    if (event.track?.kind !== "audio") return;
 
-    for (const [id, p] of Object.entries(daily) as [string, DailyParticipant][]) {
-      if (p.local) continue;
-      activeIds.add(id);
+    const participantId = event.participant.session_id;
+    const track = event.track as MediaStreamTrack;
 
-      const track = p.tracks?.audio?.persistentTrack;
-      if (track && track.readyState === "live") {
-        let audioEl = audioElementsRef.current.get(id);
-        if (!audioEl) {
-          audioEl = document.createElement("audio");
-          audioEl.autoplay = true;
-          audioElementsRef.current.set(id, audioEl);
-        }
-        // Only update srcObject if the track changed
-        const existing = audioEl.srcObject as MediaStream | null;
-        if (!existing || existing.getAudioTracks()[0]?.id !== track.id) {
-          audioEl.srcObject = new MediaStream([track]);
-        }
-      }
+    let audioEl = audioElementsRef.current.get(participantId);
+    if (!audioEl) {
+      audioEl = document.createElement("audio");
+      audioEl.autoplay = true;
+      audioElementsRef.current.set(participantId, audioEl);
     }
+    audioEl.srcObject = new MediaStream([track]);
+    console.log(`Playing remote audio for participant ${participantId}`);
 
-    // Clean up audio elements for participants who left
-    Array.from(audioElementsRef.current.entries()).forEach(([id, audioEl]) => {
-      if (!activeIds.has(id)) {
-        audioEl.srcObject = null;
-        audioElementsRef.current.delete(id);
-      }
-    });
+    setHasRemoteParticipant(true);
+  }, []);
+
+  // Handle remote audio track stopped — clean up <audio> element
+  const handleTrackStopped = useCallback((event: any) => {
+    if (!event?.participant || event.participant.local) return;
+    if (event.track?.kind !== "audio") return;
+
+    const participantId = event.participant.session_id;
+    const audioEl = audioElementsRef.current.get(participantId);
+    if (audioEl) {
+      audioEl.srcObject = null;
+      audioElementsRef.current.delete(participantId);
+    }
   }, []);
 
   const updateParticipants = useCallback((callObject: DailyCall) => {
@@ -198,15 +197,12 @@ export default function RoomPage() {
       setIsMicMuted(localP.audio === false);
     }
 
-    // Play remote audio tracks
-    playRemoteAudio(callObject);
-
     // Check if any remote participant has playable audio
     const hasRemote = Object.values(daily).some(
-      (p: DailyParticipant) => !p.local && p.tracks?.audio?.state === "playable"
+      (p: DailyParticipant) => !p.local && (p.tracks?.audio?.state === "playable" || audioElementsRef.current.has(p.session_id))
     );
     setHasRemoteParticipant(hasRemote);
-  }, [playRemoteAudio]);
+  }, []);
 
   const joinCall = useCallback(async () => {
     if (!room) return;
@@ -264,6 +260,10 @@ export default function RoomPage() {
       callObject.on("participant-updated", () => updateParticipants(callObject));
       callObject.on("participant-left", () => updateParticipants(callObject));
 
+      // Play remote audio via track-started/stopped events
+      callObject.on("track-started", handleTrackStarted);
+      callObject.on("track-stopped", handleTrackStopped);
+
       callObject.on("recording-started", () => setIsCloudRecording(true));
       callObject.on("recording-stopped", () => setIsCloudRecording(false));
       callObject.on("recording-error", () => setIsCloudRecording(false));
@@ -279,7 +279,7 @@ export default function RoomPage() {
       setError(err.message || "Failed to join call");
       setCallState("error");
     }
-  }, [room, roomId, updateParticipants]);
+  }, [room, roomId, updateParticipants, handleTrackStarted, handleTrackStopped]);
 
   const leaveCall = useCallback(async () => {
     setCallState("leaving");
