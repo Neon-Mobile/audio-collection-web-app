@@ -225,7 +225,7 @@ export default function RoomPage() {
           userMediaAudioConstraints: {
             sampleRate: { ideal: 48000 },
             channelCount: { ideal: 1 },
-            echoCancellation: { ideal: false },
+            echoCancellation: true,
             noiseSuppression: { ideal: false },
             autoGainControl: { ideal: false },
           },
@@ -436,7 +436,7 @@ export default function RoomPage() {
         audio: {
           sampleRate: { ideal: 48000 },
           channelCount: { ideal: 1 },
-          echoCancellation: { ideal: false },
+          echoCancellation: true,
           noiseSuppression: { ideal: false },
           autoGainControl: { ideal: false },
         },
