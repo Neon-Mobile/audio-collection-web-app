@@ -35,6 +35,8 @@ pool.query(\`
 
   ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by VARCHAR;
 
+  ALTER TABLE recordings ADD COLUMN IF NOT EXISTS speaker_id TEXT;
+
   CREATE TABLE IF NOT EXISTS referral_codes (
     id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
     code VARCHAR(12) NOT NULL UNIQUE,

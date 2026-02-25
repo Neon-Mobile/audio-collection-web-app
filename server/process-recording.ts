@@ -44,11 +44,13 @@ async function runFfmpeg(args: string[]): Promise<void> {
 async function processAudioFile(
   s3Key: string,
   folderNumber: string,
+  speakerId?: string,
 ): Promise<{ processedFolder: string; webmS3Key: string; wavS3Key: string }> {
   const folderPrefix = `processed/${folderNumber}`;
+  const fileStem = speakerId ? `${folderNumber}_${speakerId}` : folderNumber;
   const tmpDir = os.tmpdir();
-  const webmPath = path.join(tmpDir, `audio-${folderNumber}-${Date.now()}.webm`);
-  const wavPath = path.join(tmpDir, `audio-${folderNumber}-${Date.now()}.wav`);
+  const webmPath = path.join(tmpDir, `audio-${fileStem}-${Date.now()}.webm`);
+  const wavPath = path.join(tmpDir, `audio-${fileStem}-${Date.now()}.wav`);
 
   try {
     const webmBuffer = await downloadFromS3(s3Key);
@@ -68,8 +70,8 @@ async function processAudioFile(
     console.log(`WAV conversion complete: ${wavBuffer.length} bytes`);
 
     // Copy original WebM and upload WAV to processed folder
-    const webmS3Key = `${folderPrefix}/${folderNumber}.webm`;
-    const wavS3Key = `${folderPrefix}/${folderNumber}.wav`;
+    const webmS3Key = `${folderPrefix}/${fileStem}.webm`;
+    const wavS3Key = `${folderPrefix}/${fileStem}.wav`;
 
     await copyInS3(s3Key, webmS3Key);
     await uploadBufferToS3(wavS3Key, wavBuffer, "audio/wav");
@@ -88,7 +90,7 @@ async function getNextFolderNumber(): Promise<string> {
   return String(max + 1).padStart(4, "0");
 }
 
-export async function processRecording(recordingId: string) {
+export async function processRecording(recordingId: string, overrideFolderNumber?: string) {
   const recording = await storage.getRecordingById(recordingId);
   if (!recording) {
     throw new Error(`Recording not found: ${recordingId}`);
@@ -99,10 +101,10 @@ export async function processRecording(recordingId: string) {
     return recording;
   }
 
-  const folderNumber = await getNextFolderNumber();
+  const folderNumber = overrideFolderNumber || await getNextFolderNumber();
   console.log(`Processing recording ${recordingId} → processed/${folderNumber}/`);
 
-  const result = await processAudioFile(recording.s3Key, folderNumber);
+  const result = await processAudioFile(recording.s3Key, folderNumber, recording.speakerId ?? undefined);
   const updated = await storage.updateRecording(recordingId, {
     processedFolder: result.processedFolder,
     wavS3Key: result.wavS3Key,

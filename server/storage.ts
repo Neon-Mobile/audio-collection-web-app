@@ -26,7 +26,7 @@ export interface IStorage {
   getRoomsByUser(userId: string): Promise<Room[]>;
 
   // Recordings
-  createRecording(data: Omit<Recording, "id" | "createdAt" | "processedFolder" | "wavS3Key">): Promise<Recording>;
+  createRecording(data: Omit<Recording, "id" | "createdAt" | "processedFolder" | "wavS3Key" | "speakerId"> & { speakerId?: string | null }): Promise<Recording>;
   getRecordingsByRoom(roomId: string): Promise<Recording[]>;
   getRecordingsByUser(userId: string): Promise<Recording[]>;
   getRecordings(): Promise<Recording[]>;
@@ -135,7 +135,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Recordings
-  async createRecording(data: Omit<Recording, "id" | "createdAt" | "processedFolder" | "wavS3Key">): Promise<Recording> {
+  async createRecording(data: Omit<Recording, "id" | "createdAt" | "processedFolder" | "wavS3Key" | "speakerId"> & { speakerId?: string | null }): Promise<Recording> {
     const [result] = await db.insert(recordings).values(data).returning();
     return result;
   }

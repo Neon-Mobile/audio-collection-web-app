@@ -96,6 +96,7 @@ export const recordings = pgTable("recordings", {
   sampleRate: integer("sample_rate").notNull().default(48000),
   channels: integer("channels").notNull().default(1),
   recordingType: text("recording_type").notNull(),
+  speakerId: text("speaker_id"),
   processedFolder: text("processed_folder"),
   wavS3Key: text("wav_s3_key"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -344,7 +344,7 @@ export async function registerRoutes(
 
   app.post("/api/recordings/upload-url", requireApproved, async (req, res) => {
     try {
-      const { roomId, fileName, duration, fileSize, format, sampleRate, channels, recordingType } = req.body;
+      const { roomId, fileName, duration, fileSize, format, sampleRate, channels, recordingType, speakerId } = req.body;
 
       if (!roomId || !fileName || !recordingType) {
         return res.status(400).json({ error: "Missing required fields: roomId, fileName, recordingType" });
@@ -385,6 +385,7 @@ export async function registerRoutes(
         sampleRate: sampleRate || 48000,
         channels: channels || 1,
         recordingType,
+        speakerId: speakerId || null,
       });
 
       res.json({ uploadUrl, recordingId: recording.id, s3Key });
@@ -431,7 +432,8 @@ export async function registerRoutes(
 
   app.post("/api/recordings/:id/process", requireApproved, async (req, res) => {
     try {
-      const recording = await processRecording(req.params.id as string);
+      const { folderNumber } = req.body || {};
+      const recording = await processRecording(req.params.id as string, folderNumber);
       res.json({
         processedFolder: recording.processedFolder,
         wavS3Key: recording.wavS3Key,
