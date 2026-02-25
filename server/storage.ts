@@ -1,4 +1,4 @@
-import { type User, type Room, type Recording, users, rooms, recordings } from "@shared/schema";
+import { type User, type Room, type Recording, type OnboardingSample, users, rooms, recordings, onboardingSamples } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, isNotNull, sql } from "drizzle-orm";
 
@@ -32,6 +32,13 @@ export interface IStorage {
   getRecordingById(id: string): Promise<Recording | undefined>;
   updateRecording(id: string, data: Partial<Omit<Recording, "id" | "createdAt">>): Promise<Recording>;
   getProcessedRecordingCount(): Promise<number>;
+
+  // Onboarding Samples
+  createOnboardingSample(data: Omit<OnboardingSample, "id" | "createdAt" | "processedFolder" | "wavS3Key">): Promise<OnboardingSample>;
+  getOnboardingSampleById(id: string): Promise<OnboardingSample | undefined>;
+  getOnboardingSamplesByUser(userId: string): Promise<OnboardingSample[]>;
+  updateOnboardingSample(id: string, data: Partial<Omit<OnboardingSample, "id" | "createdAt">>): Promise<OnboardingSample>;
+  getTotalProcessedCount(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -140,6 +147,40 @@ export class DatabaseStorage implements IStorage {
       .from(recordings)
       .where(isNotNull(recordings.processedFolder));
     return result.count;
+  }
+
+  // Onboarding Samples
+  async createOnboardingSample(data: Omit<OnboardingSample, "id" | "createdAt" | "processedFolder" | "wavS3Key">): Promise<OnboardingSample> {
+    const [result] = await db.insert(onboardingSamples).values(data).returning();
+    return result;
+  }
+
+  async getOnboardingSampleById(id: string): Promise<OnboardingSample | undefined> {
+    const [result] = await db.select().from(onboardingSamples).where(eq(onboardingSamples.id, id));
+    return result;
+  }
+
+  async getOnboardingSamplesByUser(userId: string): Promise<OnboardingSample[]> {
+    return db
+      .select()
+      .from(onboardingSamples)
+      .where(eq(onboardingSamples.userId, userId))
+      .orderBy(onboardingSamples.promptIndex);
+  }
+
+  async updateOnboardingSample(id: string, data: Partial<Omit<OnboardingSample, "id" | "createdAt">>): Promise<OnboardingSample> {
+    const [result] = await db.update(onboardingSamples).set(data).where(eq(onboardingSamples.id, id)).returning();
+    return result;
+  }
+
+  async getTotalProcessedCount(): Promise<number> {
+    const result = await db.execute(sql`
+      SELECT (
+        (SELECT count(*) FROM recordings WHERE processed_folder IS NOT NULL) +
+        (SELECT count(*) FROM onboarding_samples WHERE processed_folder IS NOT NULL)
+      )::int AS count
+    `);
+    return (result.rows[0] as any).count;
   }
 }
 

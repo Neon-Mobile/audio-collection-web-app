@@ -40,31 +40,18 @@ async function runFfmpeg(args: string[]): Promise<void> {
   } catch {}
 }
 
-export async function processRecording(recordingId: string) {
-  const recording = await storage.getRecordingById(recordingId);
-  if (!recording) {
-    throw new Error(`Recording not found: ${recordingId}`);
-  }
-
-  if (recording.processedFolder) {
-    console.log(`Recording ${recordingId} already processed in folder ${recording.processedFolder}`);
-    return recording;
-  }
-
-  // Determine next folder number
-  const count = await storage.getProcessedRecordingCount();
-  const folderNumber = String(count + 1).padStart(4, "0");
+/** Shared core: download WebM from S3, convert to WAV, upload both to processed/NNNN/ */
+async function processAudioFile(
+  s3Key: string,
+  folderNumber: string,
+): Promise<{ processedFolder: string; webmS3Key: string; wavS3Key: string }> {
   const folderPrefix = `processed/${folderNumber}`;
-
-  console.log(`Processing recording ${recordingId} → ${folderPrefix}/`);
-
-  // Download WebM from S3 to temp
   const tmpDir = os.tmpdir();
-  const webmPath = path.join(tmpDir, `recording-${recordingId}.webm`);
-  const wavPath = path.join(tmpDir, `recording-${recordingId}.wav`);
+  const webmPath = path.join(tmpDir, `audio-${folderNumber}-${Date.now()}.webm`);
+  const wavPath = path.join(tmpDir, `audio-${folderNumber}-${Date.now()}.wav`);
 
   try {
-    const webmBuffer = await downloadFromS3(recording.s3Key);
+    const webmBuffer = await downloadFromS3(s3Key);
     fs.writeFileSync(webmPath, webmBuffer);
     console.log(`Downloaded ${webmBuffer.length} bytes to ${webmPath}`);
 
@@ -84,20 +71,88 @@ export async function processRecording(recordingId: string) {
     const webmS3Key = `${folderPrefix}/${folderNumber}.webm`;
     const wavS3Key = `${folderPrefix}/${folderNumber}.wav`;
 
-    await copyInS3(recording.s3Key, webmS3Key);
+    await copyInS3(s3Key, webmS3Key);
     await uploadBufferToS3(wavS3Key, wavBuffer, "audio/wav");
 
     console.log(`Uploaded to S3: ${webmS3Key}, ${wavS3Key}`);
 
-    // Update recording in DB
-    const updated = await storage.updateRecording(recordingId, {
-      processedFolder: folderNumber,
-      wavS3Key,
-    });
+    return { processedFolder: folderNumber, webmS3Key, wavS3Key };
+  } finally {
+    try { fs.rmSync(webmPath); } catch {}
+    try { fs.rmSync(wavPath); } catch {}
+  }
+}
 
+async function getNextFolderNumber(): Promise<string> {
+  const count = await storage.getProcessedRecordingCount();
+  return String(count + 1).padStart(4, "0");
+}
+
+export async function processRecording(recordingId: string) {
+  const recording = await storage.getRecordingById(recordingId);
+  if (!recording) {
+    throw new Error(`Recording not found: ${recordingId}`);
+  }
+
+  if (recording.processedFolder) {
+    console.log(`Recording ${recordingId} already processed in folder ${recording.processedFolder}`);
+    return recording;
+  }
+
+  const folderNumber = await getNextFolderNumber();
+  console.log(`Processing recording ${recordingId} → processed/${folderNumber}/`);
+
+  const result = await processAudioFile(recording.s3Key, folderNumber);
+  const updated = await storage.updateRecording(recordingId, {
+    processedFolder: result.processedFolder,
+    wavS3Key: result.wavS3Key,
+  });
+
+  return updated;
+}
+
+/** Convert onboarding sample WebM → WAV in-place (same S3 folder, no processed/ copy) */
+export async function processOnboardingSample(sampleId: string) {
+  const sample = await storage.getOnboardingSampleById(sampleId);
+  if (!sample) {
+    throw new Error(`Onboarding sample not found: ${sampleId}`);
+  }
+
+  if (sample.wavS3Key) {
+    console.log(`Sample ${sampleId} already converted: ${sample.wavS3Key}`);
+    return sample;
+  }
+
+  // Place WAV next to the WebM: onboarding-samples/{userId}/0.webm → 0.wav
+  const wavS3Key = sample.s3Key.replace(/\.webm$/, ".wav");
+  console.log(`Converting onboarding sample ${sampleId}: ${sample.s3Key} → ${wavS3Key}`);
+
+  const tmpDir = os.tmpdir();
+  const webmPath = path.join(tmpDir, `sample-${sampleId}.webm`);
+  const wavPath = path.join(tmpDir, `sample-${sampleId}.wav`);
+
+  try {
+    const webmBuffer = await downloadFromS3(sample.s3Key);
+    fs.writeFileSync(webmPath, webmBuffer);
+    console.log(`Downloaded ${webmBuffer.length} bytes`);
+
+    await runFfmpeg([
+      "-i", webmPath,
+      "-ar", "48000",
+      "-ac", "1",
+      "-c:a", "pcm_s16le",
+      wavPath,
+    ]);
+
+    const wavBuffer = fs.readFileSync(wavPath);
+    console.log(`WAV conversion complete: ${wavBuffer.length} bytes`);
+
+    await uploadBufferToS3(wavS3Key, wavBuffer, "audio/wav");
+    console.log(`Uploaded WAV to S3: ${wavS3Key}`);
+
+    const updated = await storage.updateOnboardingSample(sampleId, { wavS3Key });
     return updated;
   } finally {
-    // Clean up temp files
     try { fs.rmSync(webmPath); } catch {}
     try { fs.rmSync(wavPath); } catch {}
   }

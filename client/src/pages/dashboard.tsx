@@ -27,8 +27,8 @@ export default function Dashboard() {
   const [roomName, setRoomName] = useState("");
   const { toast } = useToast();
 
-  // Redirect to onboarding if not completed
-  if (user && !user.onboardingCompletedAt) {
+  // Redirect to onboarding if not completed (profile or samples) — skip for already-approved users
+  if (user && !user.approved && (!user.onboardingCompletedAt || !user.samplesCompletedAt)) {
     setLocation("/onboarding");
     return null;
   }

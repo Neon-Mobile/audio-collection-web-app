@@ -20,6 +20,7 @@ declare global {
       approved: boolean;
       onboardingData: unknown;
       onboardingCompletedAt: Date | null;
+      samplesCompletedAt: Date | null;
       createdAt: Date;
     }
   }
@@ -97,6 +98,7 @@ function userToSession(user: User): Express.User {
     approved: user.approved,
     onboardingData: user.onboardingData,
     onboardingCompletedAt: user.onboardingCompletedAt,
+    samplesCompletedAt: user.samplesCompletedAt,
     createdAt: user.createdAt,
   };
 }

@@ -3,6 +3,13 @@ import { pgTable, text, varchar, timestamp, boolean, integer, jsonb } from "driz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Onboarding sample prompts — shared between client + server
+export const ONBOARDING_PROMPTS = [
+  { type: "speak" as const, text: 'Speak: "The quick brown fox jumps over the lazy dog near the bank of the river."', duration: 6 },
+  { type: "silence" as const, text: "Be quiet", duration: 3 },
+  { type: "speak" as const, text: 'Speak: "The quick brown fox jumps over the lazy dog near the bank of the river."', duration: 6 },
+];
+
 // Users table
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -12,6 +19,7 @@ export const users = pgTable("users", {
   approved: boolean("approved").notNull().default(false),
   onboardingData: jsonb("onboarding_data"),
   onboardingCompletedAt: timestamp("onboarding_completed_at"),
+  samplesCompletedAt: timestamp("samples_completed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -23,6 +31,25 @@ export const rooms = pgTable("rooms", {
   dailyRoomName: text("daily_room_name").notNull(),
   createdBy: varchar("created_by").notNull().references(() => users.id),
   expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Onboarding samples table
+export const onboardingSamples = pgTable("onboarding_samples", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  promptIndex: integer("prompt_index").notNull(),
+  promptText: text("prompt_text").notNull(),
+  s3Key: text("s3_key").notNull(),
+  s3Bucket: text("s3_bucket").notNull(),
+  fileName: text("file_name").notNull(),
+  duration: integer("duration"),
+  fileSize: integer("file_size"),
+  format: text("format").notNull().default("webm"),
+  sampleRate: integer("sample_rate").notNull().default(48000),
+  channels: integer("channels").notNull().default(1),
+  processedFolder: text("processed_folder"),
+  wavS3Key: text("wav_s3_key"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -59,7 +86,12 @@ export const loginSchema = z.object({
 export const onboardingSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
+  gender: z.enum(["male", "female", "non-binary", "prefer-not-to-say"]),
+  age: z.number().int().min(13).max(120),
   primaryLanguage: z.string().min(1),
+  countryOfEducation: z.string().min(1),
+  countryOfResidence: z.string().min(1),
+  occupation: z.string().min(1),
   referralSource: z.string().optional(),
 });
 
@@ -72,3 +104,4 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Room = typeof rooms.$inferSelect;
 export type Recording = typeof recordings.$inferSelect;
+export type OnboardingSample = typeof onboardingSamples.$inferSelect;

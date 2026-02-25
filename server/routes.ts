@@ -6,7 +6,7 @@ import { requireAuth, requireApproved, requireAdmin, hashPassword } from "./auth
 import { loginSchema, onboardingSchema, createRoomSchema } from "@shared/schema";
 import { createDailyRoom, createMeetingToken } from "./daily";
 import { generateUploadUrl, generateDownloadUrl } from "./s3";
-import { processRecording } from "./process-recording";
+import { processRecording, processOnboardingSample } from "./process-recording";
 
 const S3_BUCKET = process.env.AWS_S3_BUCKET || "web-app-call-recordings";
 
@@ -42,6 +42,7 @@ export async function registerRoutes(
           approved: user.approved,
           onboardingData: user.onboardingData,
           onboardingCompletedAt: user.onboardingCompletedAt,
+          samplesCompletedAt: user.samplesCompletedAt,
           createdAt: user.createdAt,
         },
         (err) => {
@@ -55,6 +56,7 @@ export async function registerRoutes(
             approved: user.approved,
             onboardingData: user.onboardingData,
             onboardingCompletedAt: user.onboardingCompletedAt,
+            samplesCompletedAt: user.samplesCompletedAt,
           });
         }
       );
@@ -83,6 +85,7 @@ export async function registerRoutes(
           approved: user.approved,
           onboardingData: user.onboardingData,
           onboardingCompletedAt: user.onboardingCompletedAt,
+          samplesCompletedAt: user.samplesCompletedAt,
         });
       });
     })(req, res, next);
@@ -108,6 +111,7 @@ export async function registerRoutes(
       approved: req.user!.approved,
       onboardingData: req.user!.onboardingData,
       onboardingCompletedAt: req.user!.onboardingCompletedAt,
+      samplesCompletedAt: req.user!.samplesCompletedAt,
     });
   });
 
@@ -134,9 +138,95 @@ export async function registerRoutes(
         approved: user.approved,
         onboardingData: user.onboardingData,
         onboardingCompletedAt: user.onboardingCompletedAt,
+        samplesCompletedAt: user.samplesCompletedAt,
       });
     } catch (error) {
       console.error("Onboarding error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ── Onboarding Sample Routes ────────────────────────────────
+
+  app.post("/api/onboarding/sample-upload-url", requireAuth, async (req, res) => {
+    try {
+      const { promptIndex, promptText, fileName, duration, fileSize } = req.body;
+
+      if (promptIndex === undefined || !promptText || !fileName) {
+        return res.status(400).json({ error: "Missing required fields: promptIndex, promptText, fileName" });
+      }
+
+      const s3Key = `onboarding-samples/${req.user!.id}/${promptIndex}.webm`;
+
+      const uploadUrl = await generateUploadUrl({
+        key: s3Key,
+        contentType: "audio/webm",
+        metadata: {
+          "sample-rate": "48000",
+          channels: "1",
+          format: "webm",
+          duration: String(duration || 0),
+          "file-size": String(fileSize || 0),
+          "recorded-at": new Date().toISOString(),
+          "user-id": req.user!.id,
+          "prompt-index": String(promptIndex),
+        },
+      });
+
+      const sample = await storage.createOnboardingSample({
+        userId: req.user!.id,
+        promptIndex,
+        promptText,
+        s3Key,
+        s3Bucket: S3_BUCKET,
+        fileName,
+        duration: duration || null,
+        fileSize: fileSize || null,
+        format: "webm",
+        sampleRate: 48000,
+        channels: 1,
+      });
+
+      res.json({ uploadUrl, sampleId: sample.id, s3Key });
+    } catch (error) {
+      console.error("Sample upload URL error:", error);
+      res.status(500).json({ error: "Failed to generate upload URL" });
+    }
+  });
+
+  app.post("/api/onboarding/samples/:id/process", requireAuth, async (req, res) => {
+    try {
+      const sample = await processOnboardingSample(req.params.id as string);
+      res.json({
+        processedFolder: sample.processedFolder,
+        wavS3Key: sample.wavS3Key,
+      });
+    } catch (error: any) {
+      console.error("Process onboarding sample error:", error);
+      res.status(500).json({ error: error.message || "Failed to process sample" });
+    }
+  });
+
+  app.post("/api/onboarding/samples-complete", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.updateUser(req.user!.id, {
+        samplesCompletedAt: new Date(),
+      });
+
+      // Update session
+      req.user!.samplesCompletedAt = user.samplesCompletedAt;
+
+      res.json({
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        approved: user.approved,
+        onboardingData: user.onboardingData,
+        onboardingCompletedAt: user.onboardingCompletedAt,
+        samplesCompletedAt: user.samplesCompletedAt,
+      });
+    } catch (error) {
+      console.error("Samples complete error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
@@ -338,6 +428,7 @@ export async function registerRoutes(
           approved: u.approved,
           onboardingData: u.onboardingData,
           onboardingCompletedAt: u.onboardingCompletedAt,
+          samplesCompletedAt: u.samplesCompletedAt,
           createdAt: u.createdAt,
         }))
       );

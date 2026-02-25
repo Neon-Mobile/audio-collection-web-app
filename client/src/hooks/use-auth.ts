@@ -8,6 +8,7 @@ interface AuthUser {
   approved: boolean;
   onboardingData: Record<string, string> | null;
   onboardingCompletedAt: string | null;
+  samplesCompletedAt: string | null;
 }
 
 export function useAuth() {
@@ -55,10 +56,25 @@ export function useAuth() {
     mutationFn: async (data: {
       firstName: string;
       lastName: string;
+      gender: string;
+      age: number;
       primaryLanguage: string;
+      countryOfEducation: string;
+      countryOfResidence: string;
+      occupation: string;
       referralSource?: string;
     }) => {
       const res = await apiRequest("POST", "/api/auth/onboarding", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
+  });
+
+  const completeSamplesMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/onboarding/samples-complete");
       return res.json();
     },
     onSuccess: () => {
@@ -74,6 +90,7 @@ export function useAuth() {
     register: registerMutation.mutateAsync,
     logout: logoutMutation.mutateAsync,
     submitOnboarding: onboardingMutation.mutateAsync,
+    completeSamples: completeSamplesMutation.mutateAsync,
     isLoginPending: loginMutation.isPending,
     isRegisterPending: registerMutation.isPending,
     isOnboardingPending: onboardingMutation.isPending,
