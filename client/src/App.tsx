@@ -9,6 +9,7 @@ import Login from "@/pages/login";
 import Register from "@/pages/register";
 import Onboarding from "@/pages/onboarding";
 import Dashboard from "@/pages/dashboard";
+import TaskPage from "@/pages/task";
 import RoomPage from "@/pages/room";
 import Admin from "@/pages/admin";
 import NotFound from "@/pages/not-found";
@@ -28,6 +29,11 @@ function Router() {
       <Route path="/onboarding">
         <ProtectedRoute>
           <Onboarding />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/task/:taskType">
+        <ProtectedRoute>
+          <TaskPage />
         </ProtectedRoute>
       </Route>
       <Route path="/room/:id">

@@ -1,4 +1,4 @@
-import { type User, type Room, type Recording, type OnboardingSample, type ReferralCode, type RoomInvitation, type Notification, users, rooms, recordings, onboardingSamples, referralCodes, roomInvitations, notifications } from "@shared/schema";
+import { type User, type Room, type Recording, type OnboardingSample, type ReferralCode, type RoomInvitation, type Notification, type TaskSession, users, rooms, recordings, onboardingSamples, referralCodes, roomInvitations, notifications, taskSessions } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, isNotNull, sql } from "drizzle-orm";
 import * as crypto from "node:crypto";
@@ -57,6 +57,17 @@ export interface IStorage {
   getUnreadNotificationCount(userId: string): Promise<number>;
   markNotificationRead(id: string): Promise<void>;
   markAllNotificationsRead(userId: string): Promise<void>;
+
+  // Task Sessions
+  createTaskSession(data: { taskType: string; userId: string; partnerEmail?: string; partnerStatus?: string; status?: string }): Promise<TaskSession>;
+  getTaskSessionById(id: string): Promise<TaskSession | undefined>;
+  getTaskSessionsByUser(userId: string): Promise<TaskSession[]>;
+  getActiveTaskSessionByUserAndType(userId: string, taskType: string): Promise<TaskSession | undefined>;
+  updateTaskSession(id: string, data: Partial<Omit<TaskSession, "id" | "createdAt">>): Promise<TaskSession>;
+  getTaskSessionsByRoom(roomId: string): Promise<TaskSession[]>;
+  getTaskSessionsByPartner(partnerId: string): Promise<TaskSession[]>;
+  getTaskSessionsByPartnerEmail(email: string): Promise<TaskSession[]>;
+  updateTaskSessionsForApprovedPartner(partnerId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -283,6 +294,55 @@ export class DatabaseStorage implements IStorage {
 
   async markAllNotificationsRead(userId: string): Promise<void> {
     await db.update(notifications).set({ read: true }).where(eq(notifications.userId, userId));
+  }
+
+  // Task Sessions
+  async createTaskSession(data: { taskType: string; userId: string; partnerEmail?: string; partnerStatus?: string; status?: string }): Promise<TaskSession> {
+    const [result] = await db.insert(taskSessions).values(data).returning();
+    return result;
+  }
+
+  async getTaskSessionById(id: string): Promise<TaskSession | undefined> {
+    const [result] = await db.select().from(taskSessions).where(eq(taskSessions.id, id));
+    return result;
+  }
+
+  async getTaskSessionsByUser(userId: string): Promise<TaskSession[]> {
+    return db.select().from(taskSessions).where(eq(taskSessions.userId, userId)).orderBy(desc(taskSessions.createdAt));
+  }
+
+  async getActiveTaskSessionByUserAndType(userId: string, taskType: string): Promise<TaskSession | undefined> {
+    const [result] = await db
+      .select()
+      .from(taskSessions)
+      .where(and(eq(taskSessions.userId, userId), eq(taskSessions.taskType, taskType), sql`${taskSessions.status} != 'completed'`))
+      .orderBy(desc(taskSessions.createdAt))
+      .limit(1);
+    return result;
+  }
+
+  async updateTaskSession(id: string, data: Partial<Omit<TaskSession, "id" | "createdAt">>): Promise<TaskSession> {
+    const [result] = await db.update(taskSessions).set({ ...data, updatedAt: new Date() }).where(eq(taskSessions.id, id)).returning();
+    return result;
+  }
+
+  async getTaskSessionsByRoom(roomId: string): Promise<TaskSession[]> {
+    return db.select().from(taskSessions).where(eq(taskSessions.roomId, roomId));
+  }
+
+  async getTaskSessionsByPartner(partnerId: string): Promise<TaskSession[]> {
+    return db.select().from(taskSessions).where(eq(taskSessions.partnerId, partnerId));
+  }
+
+  async getTaskSessionsByPartnerEmail(email: string): Promise<TaskSession[]> {
+    return db.select().from(taskSessions).where(and(eq(taskSessions.partnerEmail, email), eq(taskSessions.partnerStatus, "invited")));
+  }
+
+  async updateTaskSessionsForApprovedPartner(partnerId: string): Promise<void> {
+    await db
+      .update(taskSessions)
+      .set({ partnerStatus: "approved", status: "ready_to_record", updatedAt: new Date() })
+      .where(and(eq(taskSessions.partnerId, partnerId), eq(taskSessions.partnerStatus, "registered")));
   }
 }
 

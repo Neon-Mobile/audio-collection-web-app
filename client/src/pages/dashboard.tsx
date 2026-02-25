@@ -1,26 +1,16 @@
-import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuthContext } from "@/lib/auth-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { TASK_TYPES } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Copy, LogIn, LogOut, Shield, Link2, Check, X } from "lucide-react";
+import { Loader2, Copy, LogOut, Shield, Link2, Check, X, ArrowRight, Mic, MessageCircle } from "lucide-react";
 import { NotificationBell } from "@/components/notification-bell";
-import type { Room } from "@shared/schema";
-
-function sanitizePreview(name: string): string {
-  return name
-    .replace(/[^A-Za-z0-9\-_]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 interface PendingInvitation {
   id: string;
@@ -30,10 +20,44 @@ interface PendingInvitation {
   createdAt: string;
 }
 
+interface TaskSession {
+  id: string;
+  taskType: string;
+  userId: string;
+  partnerId: string | null;
+  partnerEmail: string | null;
+  partnerStatus: string;
+  roomId: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const TASK_ICONS: Record<string, typeof Mic> = {
+  "whispered-conversation": Mic,
+  "emotional-conversation": MessageCircle,
+};
+
+function getStatusLabel(status: string): { label: string; variant: "secondary" | "default" | "outline" } {
+  switch (status) {
+    case "inviting_partner":
+      return { label: "Inviting Partner", variant: "secondary" };
+    case "waiting_approval":
+      return { label: "Waiting for Approval", variant: "secondary" };
+    case "ready_to_record":
+      return { label: "Ready to Record", variant: "default" };
+    case "room_created":
+      return { label: "Room Ready", variant: "default" };
+    case "in_progress":
+      return { label: "In Progress", variant: "default" };
+    default:
+      return { label: status, variant: "outline" };
+  }
+}
+
 export default function Dashboard() {
   const { user, logout } = useAuthContext();
   const [, setLocation] = useLocation();
-  const [roomName, setRoomName] = useState("");
   const { toast } = useToast();
 
   // Redirect to onboarding if not completed (profile or samples) — skip for already-approved users
@@ -50,7 +74,7 @@ export default function Dashboard() {
           <CardHeader className="text-center">
             <CardTitle>Pending Approval</CardTitle>
             <CardDescription>
-              Your account is awaiting admin approval. You'll be able to create and join rooms once approved.
+              Your account is awaiting admin approval. You'll be able to start tasks once approved.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center">
@@ -64,37 +88,15 @@ export default function Dashboard() {
     );
   }
 
-  const { data: rooms = [], isLoading: roomsLoading } = useQuery<Room[]>({
-    queryKey: ["/api/rooms"],
-    enabled: !!user?.approved,
-  });
-
   const { data: pendingInvitations = [] } = useQuery<PendingInvitation[]>({
     queryKey: ["/api/invitations/pending"],
     enabled: !!user?.approved,
     refetchInterval: 30000,
   });
 
-  const createRoomMutation = useMutation({
-    mutationFn: async (name?: string) => {
-      const res = await apiRequest("POST", "/api/rooms", { name: name || undefined });
-      return res.json();
-    },
-    onSuccess: (room: Room) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/rooms"] });
-      toast({ title: "Room created", description: `Room "${room.name}" is ready.` });
-      setRoomName("");
-    },
-    onError: (err: Error) => {
-      toast({ title: "Failed to create room", description: err.message, variant: "destructive" });
-    },
-  });
-
-  const referralMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/referrals/code");
-      return res.json();
-    },
+  const { data: taskSessions = [], isLoading: sessionsLoading } = useQuery<TaskSession[]>({
+    queryKey: ["/api/task-sessions"],
+    enabled: !!user?.approved,
   });
 
   const acceptInvitation = useMutation({
@@ -118,16 +120,12 @@ export default function Dashboard() {
     },
   });
 
-  const handleCreateRoom = (e: React.FormEvent) => {
-    e.preventDefault();
-    createRoomMutation.mutate(roomName || undefined);
-  };
-
-  const copyRoomLink = (roomId: string) => {
-    const url = `${window.location.origin}/room/${roomId}`;
-    navigator.clipboard.writeText(url);
-    toast({ title: "Link copied", description: "Room link copied to clipboard." });
-  };
+  const referralMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/referrals/code");
+      return res.json();
+    },
+  });
 
   const copyReferralLink = () => {
     if (referralMutation.data?.link) {
@@ -140,6 +138,8 @@ export default function Dashboard() {
     await logout();
     setLocation("/login");
   };
+
+  const activeSessions = taskSessions.filter((s) => s.status !== "completed");
 
   return (
     <div className="min-h-screen bg-background">
@@ -203,111 +203,93 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {/* Create Room */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Create a Room</CardTitle>
-            <CardDescription>
-              Start a new audio call room. Leave the name blank for an auto-generated name.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreateRoom} className="flex gap-3 items-end">
-              <div className="flex-1 space-y-2">
-                <Label htmlFor="roomName">Room Name (optional)</Label>
-                <Input
-                  id="roomName"
-                  value={roomName}
-                  onChange={(e) => setRoomName(e.target.value)}
-                  placeholder="e.g. my-session"
-                />
-                {roomName && (
-                  <p className="text-xs text-muted-foreground">
-                    Will be created as: <code className="bg-muted px-1 rounded">{sanitizePreview(roomName)}</code>
-                  </p>
-                )}
-              </div>
-              <Button type="submit" disabled={createRoomMutation.isPending}>
-                {createRoomMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="mr-2 h-4 w-4" />
-                )}
-                Create Room
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+        {/* Task Types */}
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Recording Tasks</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {TASK_TYPES.map((task) => {
+              const Icon = TASK_ICONS[task.id] || Mic;
+              return (
+                <Card
+                  key={task.id}
+                  className="cursor-pointer hover:border-primary transition-colors"
+                  onClick={() => setLocation(`/task/${task.id}`)}
+                >
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
+                        <Icon className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">{task.name}</CardTitle>
+                        <CardDescription className="text-xs">{task.description}</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <Button className="w-full" variant="outline">
+                      Start Task
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
 
-        <Separator />
-
-        {/* Room List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>My Rooms</CardTitle>
-            <CardDescription>Rooms you've created. Share the link for others to join.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {roomsLoading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : rooms.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">No rooms yet. Create one above to get started.</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Expires</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rooms.map((room) => {
-                    const isExpired = new Date(room.expiresAt) < new Date();
+        {/* Active Tasks */}
+        {(sessionsLoading || activeSessions.length > 0) && (
+          <>
+            <Separator />
+            <div>
+              <h2 className="text-lg font-semibold mb-4">Active Tasks</h2>
+              {sessionsLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {activeSessions.map((session) => {
+                    const taskDef = TASK_TYPES.find((t) => t.id === session.taskType);
+                    const Icon = TASK_ICONS[session.taskType] || Mic;
+                    const statusInfo = getStatusLabel(session.status);
                     return (
-                      <TableRow key={room.id}>
-                        <TableCell className="font-medium">{room.name}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {new Date(room.createdAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          {isExpired ? (
-                            <Badge variant="secondary">Expired</Badge>
-                          ) : (
-                            <span className="text-muted-foreground">
-                              {new Date(room.expiresAt).toLocaleTimeString()}
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyRoomLink(room.id)}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          {!isExpired && (
+                      <Card key={session.id}>
+                        <CardContent className="py-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <Icon className="h-5 w-5 text-muted-foreground" />
+                              <div>
+                                <p className="text-sm font-medium">{taskDef?.name || session.taskType}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+                                  {session.partnerEmail && (
+                                    <span className="text-xs text-muted-foreground">
+                                      with {session.partnerEmail}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
                             <Button
+                              variant="outline"
                               size="sm"
-                              onClick={() => setLocation(`/room/${room.id}`)}
+                              onClick={() => setLocation(`/task/${session.taskType}`)}
                             >
-                              <LogIn className="mr-1 h-4 w-4" />
-                              Join
+                              Continue
+                              <ArrowRight className="ml-1 h-3 w-3" />
                             </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
+                          </div>
+                        </CardContent>
+                      </Card>
                     );
                   })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
         <Separator />
 

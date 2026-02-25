@@ -3,11 +3,11 @@ import type { Server } from "http";
 import passport from "passport";
 import { storage } from "./storage";
 import { requireAuth, requireApproved, requireAdmin, hashPassword } from "./auth";
-import { loginSchema, onboardingSchema, createRoomSchema, inviteToRoomSchema } from "@shared/schema";
+import { loginSchema, onboardingSchema, createRoomSchema, inviteToRoomSchema, createTaskSessionSchema, inviteTaskPartnerSchema, TASK_TYPES } from "@shared/schema";
 import { createDailyRoom, createMeetingToken } from "./daily";
 import { generateUploadUrl, generateDownloadUrl } from "./s3";
 import { processRecording, processOnboardingSample } from "./process-recording";
-import { sendRoomInvitationEmail } from "./email";
+import { sendRoomInvitationEmail, sendTaskPartnerInvitationEmail } from "./email";
 
 const S3_BUCKET = process.env.AWS_S3_BUCKET || "web-app-call-recordings";
 
@@ -49,6 +49,23 @@ export async function registerRoutes(
             data: { referredUserId: user.id },
           });
         }
+      }
+
+      // Update any task sessions waiting for this email as a partner
+      const pendingTaskSessions = await storage.getTaskSessionsByPartnerEmail(parsed.data.username);
+      for (const session of pendingTaskSessions) {
+        await storage.updateTaskSession(session.id, {
+          partnerId: user.id,
+          partnerStatus: "registered",
+          status: "waiting_approval",
+        });
+        await storage.createNotification({
+          userId: session.userId,
+          type: "partner_registered",
+          title: "Partner Registered!",
+          message: `${parsed.data.username} has signed up! They are now waiting for admin approval.`,
+          data: { taskSessionId: session.id },
+        });
       }
 
       req.login(
@@ -540,6 +557,20 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid status" });
       }
       const invitation = await storage.updateRoomInvitation(req.params.id as string, { status });
+
+      // If accepted, update any linked task sessions
+      if (status === "accepted") {
+        const sessions = await storage.getTaskSessionsByRoom(invitation.roomId);
+        for (const session of sessions) {
+          if (session.partnerId === req.user!.id) {
+            await storage.updateTaskSession(session.id, {
+              partnerStatus: "ready",
+              status: "in_progress",
+            });
+          }
+        }
+      }
+
       res.json(invitation);
     } catch (error) {
       console.error("Update invitation error:", error);
@@ -589,6 +620,210 @@ export async function registerRoutes(
     }
   });
 
+  // ── Task Session Routes ──────────────────────────────────────
+
+  app.get("/api/task-types", requireAuth, (_req, res) => {
+    res.json(TASK_TYPES);
+  });
+
+  app.post("/api/task-sessions", requireApproved, async (req, res) => {
+    try {
+      const parsed = createTaskSessionSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
+
+      const taskType = TASK_TYPES.find((t) => t.id === parsed.data.taskType);
+      if (!taskType) {
+        return res.status(400).json({ error: "Invalid task type" });
+      }
+
+      // Return existing active session if one exists
+      const existing = await storage.getActiveTaskSessionByUserAndType(req.user!.id, parsed.data.taskType);
+      if (existing) {
+        return res.json(existing);
+      }
+
+      const session = await storage.createTaskSession({
+        taskType: parsed.data.taskType,
+        userId: req.user!.id,
+        partnerEmail: parsed.data.partnerEmail,
+        partnerStatus: parsed.data.partnerEmail ? "invited" : "none",
+        status: "inviting_partner",
+      });
+
+      res.status(201).json(session);
+    } catch (error) {
+      console.error("Create task session error:", error);
+      res.status(500).json({ error: "Failed to create task session" });
+    }
+  });
+
+  app.get("/api/task-sessions", requireApproved, async (req, res) => {
+    try {
+      const sessions = await storage.getTaskSessionsByUser(req.user!.id);
+      res.json(sessions);
+    } catch (error) {
+      console.error("Fetch task sessions error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/task-sessions/:id", requireApproved, async (req, res) => {
+    try {
+      const session = await storage.getTaskSessionById(req.params.id as string);
+      if (!session) {
+        return res.status(404).json({ error: "Task session not found" });
+      }
+      if (session.userId !== req.user!.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Dynamically recompute partner status
+      let updatedSession = session;
+      if (session.partnerEmail && !session.partnerId) {
+        const partner = await storage.getUserByUsername(session.partnerEmail);
+        if (partner) {
+          const partnerStatus = partner.approved ? "approved" : "registered";
+          const status = partner.approved ? "ready_to_record" : "waiting_approval";
+          updatedSession = await storage.updateTaskSession(session.id, { partnerId: partner.id, partnerStatus, status });
+        }
+      } else if (session.partnerId && session.partnerStatus !== "ready") {
+        const partner = await storage.getUserById(session.partnerId);
+        if (partner && partner.approved && session.partnerStatus !== "approved") {
+          updatedSession = await storage.updateTaskSession(session.id, { partnerStatus: "approved", status: "ready_to_record" });
+        }
+      }
+
+      res.json(updatedSession);
+    } catch (error) {
+      console.error("Fetch task session error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/task-sessions/:id/invite-partner", requireApproved, async (req, res) => {
+    try {
+      const parsed = inviteTaskPartnerSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
+
+      const session = await storage.getTaskSessionById(req.params.id as string);
+      if (!session || session.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Task session not found" });
+      }
+
+      const existingUser = await storage.getUserByUsername(parsed.data.email);
+
+      if (existingUser) {
+        const partnerStatus = existingUser.approved ? "approved" : "registered";
+        const status = existingUser.approved ? "ready_to_record" : "waiting_approval";
+        const updated = await storage.updateTaskSession(session.id, {
+          partnerEmail: parsed.data.email,
+          partnerId: existingUser.id,
+          partnerStatus,
+          status,
+        });
+        return res.json(updated);
+      }
+
+      // Partner not registered — send referral invitation email
+      let referralCode = await storage.getReferralCodeByUser(req.user!.id);
+      if (!referralCode) {
+        referralCode = await storage.createReferralCode(req.user!.id);
+      }
+
+      const appUrl = process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
+      const inviteLink = `${appUrl}/invite/${referralCode.code}`;
+      const taskDef = TASK_TYPES.find((t) => t.id === session.taskType);
+
+      sendTaskPartnerInvitationEmail({
+        to: parsed.data.email,
+        inviterName: (req.user!.onboardingData as any)?.firstName || req.user!.username,
+        taskName: taskDef?.name || session.taskType,
+        inviteLink,
+      });
+
+      const updated = await storage.updateTaskSession(session.id, {
+        partnerEmail: parsed.data.email,
+        partnerStatus: "invited",
+        status: "inviting_partner",
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("Invite partner error:", error);
+      res.status(500).json({ error: "Failed to invite partner" });
+    }
+  });
+
+  app.post("/api/task-sessions/:id/create-room", requireApproved, async (req, res) => {
+    try {
+      const session = await storage.getTaskSessionById(req.params.id as string);
+      if (!session || session.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Task session not found" });
+      }
+
+      if (!session.partnerId) {
+        return res.status(400).json({ error: "No partner assigned to this task session" });
+      }
+
+      const partner = await storage.getUserById(session.partnerId);
+      if (!partner || !partner.approved) {
+        return res.status(400).json({ error: "Partner is not yet approved" });
+      }
+
+      // If room already exists, return the session
+      if (session.roomId) {
+        return res.json(session);
+      }
+
+      const taskDef = TASK_TYPES.find((t) => t.id === session.taskType);
+      const dailyRoom = await createDailyRoom(taskDef?.name?.slice(0, 40));
+
+      const room = await storage.createRoom({
+        name: dailyRoom.name,
+        dailyRoomUrl: dailyRoom.url,
+        dailyRoomName: dailyRoom.name,
+        createdBy: req.user!.id,
+        expiresAt: dailyRoom.expiresAt,
+      });
+
+      const updated = await storage.updateTaskSession(session.id, {
+        roomId: room.id,
+        status: "room_created",
+      });
+
+      // Create room invitation for partner
+      const invitation = await storage.createRoomInvitation({
+        roomId: room.id,
+        invitedBy: req.user!.id,
+        invitedUserId: session.partnerId,
+      });
+
+      const inviterName = (req.user!.onboardingData as any)?.firstName || req.user!.username;
+      await storage.createNotification({
+        userId: session.partnerId,
+        type: "task_room_invitation",
+        title: "Ready to Record!",
+        message: `${inviterName} has created a room for "${taskDef?.name}". Join now to start recording.`,
+        data: { roomId: room.id, invitationId: invitation.id, taskSessionId: session.id },
+      });
+
+      sendRoomInvitationEmail({
+        to: partner.username,
+        inviterName,
+        roomName: room.name,
+        roomId: room.id,
+      });
+
+      res.status(201).json(updated);
+    } catch (error) {
+      console.error("Create task room error:", error);
+      res.status(500).json({ error: "Failed to create room for task" });
+    }
+  });
+
   // ── Admin Routes ─────────────────────────────────────────────
 
   app.get("/api/admin/users", requireAdmin, async (_req, res) => {
@@ -615,6 +850,21 @@ export async function registerRoutes(
   app.patch("/api/admin/users/:id/approve", requireAdmin, async (req, res) => {
     try {
       const user = await storage.approveUser(req.params.id as string);
+
+      // Update any task sessions where this user is the partner
+      await storage.updateTaskSessionsForApprovedPartner(user.id);
+      const sessionsAsPartner = await storage.getTaskSessionsByPartner(user.id);
+      for (const session of sessionsAsPartner) {
+        const taskType = TASK_TYPES.find((t) => t.id === session.taskType);
+        await storage.createNotification({
+          userId: session.userId,
+          type: "partner_approved",
+          title: "Partner Approved!",
+          message: `Your partner for "${taskType?.name}" has been approved. You can now create a room.`,
+          data: { taskSessionId: session.id },
+        });
+      }
+
       res.json({
         id: user.id,
         username: user.username,

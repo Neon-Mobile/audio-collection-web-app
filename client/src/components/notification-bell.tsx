@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ interface Notification {
 }
 
 export function NotificationBell() {
+  const [, setLocation] = useLocation();
   const { data: notifs = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     refetchInterval: 30000,
@@ -69,6 +71,10 @@ export function NotificationBell() {
                 className={`p-2 rounded text-sm cursor-pointer hover:bg-muted/50 ${!n.read ? "bg-muted" : ""}`}
                 onClick={() => {
                   if (!n.read) markRead.mutate(n.id);
+                  const data = n.data as Record<string, string> | null;
+                  if (data?.roomId && (n.type === "task_room_invitation" || n.type === "room_invitation")) {
+                    setLocation(`/room/${data.roomId}`);
+                  }
                 }}
               >
                 <p className="font-medium text-xs">{n.title}</p>

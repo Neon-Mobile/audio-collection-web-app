@@ -61,6 +61,19 @@ pool.query(\`
     read BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMP NOT NULL DEFAULT now()
   );
+
+  CREATE TABLE IF NOT EXISTS task_sessions (
+    id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+    task_type TEXT NOT NULL,
+    user_id VARCHAR NOT NULL REFERENCES users(id),
+    partner_id VARCHAR REFERENCES users(id),
+    partner_email TEXT,
+    partner_status TEXT NOT NULL DEFAULT 'none',
+    room_id VARCHAR REFERENCES rooms(id),
+    status TEXT NOT NULL DEFAULT 'inviting_partner',
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP NOT NULL DEFAULT now()
+  );
 \`).then(() => { console.log('Database tables ready'); pool.end(); })
   .catch(err => { console.error(err); pool.end(); process.exit(1); });
 "

@@ -10,6 +10,34 @@ export const ONBOARDING_PROMPTS = [
   { type: "speak" as const, text: 'Speak: "The quick brown fox jumps over the lazy dog near the bank of the river."', duration: 6 },
 ];
 
+// Task type definitions — shared between client + server
+export const TASK_TYPES = [
+  {
+    id: "whispered-conversation",
+    name: "Soft Spoken / Whispered Conversation",
+    description: "Have a quiet, whispered conversation with your partner.",
+    instructions: [
+      "Find a quiet room with minimal background noise.",
+      "Speak softly or in a whisper throughout the entire conversation.",
+      "Discuss any topic you like — the content does not matter, only the vocal style.",
+      "Aim for at least 5 minutes of natural conversation.",
+    ],
+  },
+  {
+    id: "emotional-conversation",
+    name: "Highly Emotional Conversation",
+    description: "Have an emotionally expressive conversation with your partner.",
+    instructions: [
+      "Find a comfortable, private space.",
+      "Have a conversation that naturally brings out strong emotions — excitement, surprise, frustration, joy.",
+      "You can discuss real topics or role-play a scenario together.",
+      "Aim for at least 5 minutes of natural conversation.",
+    ],
+  },
+] as const;
+
+export type TaskTypeId = (typeof TASK_TYPES)[number]["id"];
+
 // Users table
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -103,6 +131,20 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Task sessions table
+export const taskSessions = pgTable("task_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  taskType: text("task_type").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  partnerId: varchar("partner_id").references(() => users.id),
+  partnerEmail: text("partner_email"),
+  partnerStatus: text("partner_status").notNull().default("none"),
+  roomId: varchar("room_id").references(() => rooms.id),
+  status: text("status").notNull().default("inviting_partner"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Zod schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -134,6 +176,15 @@ export const inviteToRoomSchema = z.object({
   email: z.string().email(),
 });
 
+export const createTaskSessionSchema = z.object({
+  taskType: z.string().min(1),
+  partnerEmail: z.string().email().optional(),
+});
+
+export const inviteTaskPartnerSchema = z.object({
+  email: z.string().email(),
+});
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -143,3 +194,4 @@ export type OnboardingSample = typeof onboardingSamples.$inferSelect;
 export type ReferralCode = typeof referralCodes.$inferSelect;
 export type RoomInvitation = typeof roomInvitations.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+export type TaskSession = typeof taskSessions.$inferSelect;
