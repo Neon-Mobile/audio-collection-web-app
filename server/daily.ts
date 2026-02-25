@@ -11,12 +11,11 @@ export function sanitizeRoomName(name: string): string {
 }
 
 function generateRoomName(customName?: string): string {
-  if (customName && customName.trim()) {
-    return sanitizeRoomName(customName.trim());
-  }
-  const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8);
-  return `room-${timestamp}-${random}`;
+  if (customName && customName.trim()) {
+    return `${sanitizeRoomName(customName.trim())}-${random}`;
+  }
+  return `room-${Date.now()}-${random}`;
 }
 
 export async function createDailyRoom(customName?: string): Promise<{
