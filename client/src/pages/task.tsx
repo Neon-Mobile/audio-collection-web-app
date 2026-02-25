@@ -214,7 +214,7 @@ export default function TaskPage() {
               <ArrowLeft className="mr-1 h-4 w-4" />
               Back
             </Button>
-            <h1 className="text-xl font-semibold">Neon Audio Collection</h1>
+            <h1 className="text-xl font-semibold">Neon Audio</h1>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground">{user?.username}</span>

@@ -90,6 +90,9 @@ export default function RoomPage() {
   const stoppedCountRef = useRef(0);
   const expectedStopsRef = useRef(0);
 
+  // Audio elements for playing remote participants' audio
+  const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
+
   const [inviteEmail, setInviteEmail] = useState("");
   const [instructionsExpanded, setInstructionsExpanded] = useState(true);
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
@@ -145,6 +148,40 @@ export default function RoomPage() {
     },
   });
 
+  // Attach remote audio tracks to <audio> elements so we can actually hear them
+  const playRemoteAudio = useCallback((callObject: DailyCall) => {
+    const daily = callObject.participants();
+    const activeIds = new Set<string>();
+
+    for (const [id, p] of Object.entries(daily) as [string, DailyParticipant][]) {
+      if (p.local) continue;
+      activeIds.add(id);
+
+      const track = p.tracks?.audio?.persistentTrack;
+      if (track && track.readyState === "live") {
+        let audioEl = audioElementsRef.current.get(id);
+        if (!audioEl) {
+          audioEl = document.createElement("audio");
+          audioEl.autoplay = true;
+          audioElementsRef.current.set(id, audioEl);
+        }
+        // Only update srcObject if the track changed
+        const existing = audioEl.srcObject as MediaStream | null;
+        if (!existing || existing.getAudioTracks()[0]?.id !== track.id) {
+          audioEl.srcObject = new MediaStream([track]);
+        }
+      }
+    }
+
+    // Clean up audio elements for participants who left
+    Array.from(audioElementsRef.current.entries()).forEach(([id, audioEl]) => {
+      if (!activeIds.has(id)) {
+        audioEl.srcObject = null;
+        audioElementsRef.current.delete(id);
+      }
+    });
+  }, []);
+
   const updateParticipants = useCallback((callObject: DailyCall) => {
     const daily = callObject.participants();
     const mapped: Participant[] = Object.entries(daily).map(([id, p]: [string, DailyParticipant]) => ({
@@ -155,12 +192,15 @@ export default function RoomPage() {
     }));
     setParticipants(mapped);
 
+    // Play remote audio tracks
+    playRemoteAudio(callObject);
+
     // Check if any remote participant has playable audio
     const hasRemote = Object.values(daily).some(
       (p: DailyParticipant) => !p.local && p.tracks?.audio?.state === "playable"
     );
     setHasRemoteParticipant(hasRemote);
-  }, []);
+  }, [playRemoteAudio]);
 
   const joinCall = useCallback(async () => {
     if (!room) return;
@@ -261,6 +301,11 @@ export default function RoomPage() {
       clearInterval(recordingDurationIntervalRef.current);
       recordingDurationIntervalRef.current = null;
     }
+    // Clean up remote audio elements
+    audioElementsRef.current.forEach((audioEl) => {
+      audioEl.srcObject = null;
+    });
+    audioElementsRef.current.clear();
     joinTimeRef.current = null;
     setParticipants([]);
     setIsCloudRecording(false);
