@@ -192,6 +192,12 @@ export default function RoomPage() {
     }));
     setParticipants(mapped);
 
+    // Sync local mic muted state from Daily's actual state
+    const localP = Object.values(daily).find((p: DailyParticipant) => p.local);
+    if (localP) {
+      setIsMicMuted(localP.audio === false);
+    }
+
     // Play remote audio tracks
     playRemoteAudio(callObject);
 
