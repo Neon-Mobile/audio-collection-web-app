@@ -12,11 +12,63 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Check, X, Download, Shield, ShieldOff, Play, Square, Search, ArrowUpDown } from "lucide-react";
+import { Loader2, ArrowLeft, Check, X, Download, Shield, ShieldOff, Play, Square, Search, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
 import { TASK_TYPES } from "@shared/schema";
 import type { User, Room, Recording, TaskSession } from "@shared/schema";
 
 type EnrichedSession = TaskSession & { userEmail: string; recordings: Recording[] };
+
+function RecordingRow({ rec, onDownload }: { rec: Recording; onDownload: (id: string) => void }) {
+  return (
+    <div className="flex items-center gap-1">
+      <AudioPlayer recordingId={rec.id} />
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-7 w-7 p-0"
+        onClick={() => onDownload(rec.id)}
+      >
+        <Download className="h-3.5 w-3.5" />
+      </Button>
+      <span className="text-xs text-muted-foreground">
+        {rec.recordingType}
+        {rec.duration ? ` ${Math.round(rec.duration / 1000)}s` : ""}
+      </span>
+    </div>
+  );
+}
+
+function AudioCell({ recordings, onDownload }: { recordings: Recording[]; onDownload: (id: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const MAX_VISIBLE = 2;
+
+  if (recordings.length === 0) {
+    return <span className="text-xs text-muted-foreground">-</span>;
+  }
+
+  const visible = expanded ? recordings : recordings.slice(0, MAX_VISIBLE);
+  const hiddenCount = recordings.length - MAX_VISIBLE;
+
+  return (
+    <div className="flex flex-col gap-1">
+      {visible.map((rec) => (
+        <RecordingRow key={rec.id} rec={rec} onDownload={onDownload} />
+      ))}
+      {hiddenCount > 0 && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-1 text-xs text-primary hover:underline cursor-pointer bg-transparent border-0 p-0"
+        >
+          {expanded ? (
+            <><ChevronUp className="h-3 w-3" /> Show less</>
+          ) : (
+            <><ChevronDown className="h-3 w-3" /> {hiddenCount} more</>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
 
 function AudioPlayer({ recordingId }: { recordingId: string }) {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -430,29 +482,7 @@ export default function Admin() {
                                 {session.partnerEmail || "-"}
                               </TableCell>
                               <TableCell>
-                                {session.recordings.length > 0 ? (
-                                  <div className="flex flex-col gap-1">
-                                    {session.recordings.map((rec) => (
-                                      <div key={rec.id} className="flex items-center gap-1">
-                                        <AudioPlayer recordingId={rec.id} />
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          className="h-7 w-7 p-0"
-                                          onClick={() => downloadRecording(rec.id)}
-                                        >
-                                          <Download className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <span className="text-xs text-muted-foreground">
-                                          {rec.recordingType}
-                                          {rec.duration ? ` ${Math.round(rec.duration / 1000)}s` : ""}
-                                        </span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">-</span>
-                                )}
+                                <AudioCell recordings={session.recordings} onDownload={downloadRecording} />
                               </TableCell>
                               <TableCell>
                                 <ReviewerStatusSelect session={session} />
