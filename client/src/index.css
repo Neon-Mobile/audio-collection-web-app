@@ -9,53 +9,53 @@
   --opaque-button-border-intensity: -8;
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
-  --background: 0 0% 100%;
-  --foreground: 220 10% 12%;
-  --border: 220 8% 92%;
-  --card: 0 0% 98%;
-  --card-foreground: 220 10% 12%;
-  --card-border: 0 0% 94%;
+  --background: 0 0% 99%;
+  --foreground: 222 47% 11%;
+  --border: 220 13% 91%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --card-border: 220 13% 91%;
   --sidebar: 220 6% 96%;
-  --sidebar-foreground: 220 10% 12%;
+  --sidebar-foreground: 222 47% 11%;
   --sidebar-border: 220 6% 90%;
   --sidebar-primary: 220 85% 48%;
   --sidebar-primary-foreground: 220 85% 98%;
   --sidebar-accent: 220 8% 88%;
-  --sidebar-accent-foreground: 220 10% 12%;
+  --sidebar-accent-foreground: 222 47% 11%;
   --sidebar-ring: 220 85% 48%;
-  --popover: 0 0% 96%;
-  --popover-foreground: 220 10% 12%;
-  --popover-border: 0 0% 92%;
-  --primary: 174 62% 42%;
-  --primary-foreground: 174 62% 98%;
-  --secondary: 220 8% 90%;
-  --secondary-foreground: 220 10% 12%;
-  --muted: 220 10% 94%;
-  --muted-foreground: 220 8% 35%;
-  --accent: 220 12% 92%;
-  --accent-foreground: 220 10% 12%;
-  --destructive: 0 72% 51%;
-  --destructive-foreground: 0 85% 98%;
-  --input: 220 10% 75%;
-  --ring: 174 62% 42%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --popover-border: 220 13% 91%;
+  --primary: 171 76% 40%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 14% 96%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 220 9% 46%;
+  --accent: 220 14% 96%;
+  --accent-foreground: 222 47% 11%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 220 13% 91%;
+  --ring: 171 76% 40%;
   --chart-1: 220 85% 42%;
   --chart-2: 195 75% 38%;
   --chart-3: 245 70% 50%;
   --chart-4: 280 65% 48%;
   --chart-5: 340 75% 45%;
-  --font-sans: Open Sans, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-serif: Georgia, serif;
-  --font-mono: Menlo, monospace;
-  --radius: .5rem;
-  --shadow-2xs: 0px 2px 0px 0px hsl(220 10% 12% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(220 10% 12% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(220 10% 12% / 0.00), 0px 1px 2px -1px hsl(220 10% 12% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(220 10% 12% / 0.00), 0px 1px 2px -1px hsl(220 10% 12% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(220 10% 12% / 0.00), 0px 2px 4px -1px hsl(220 10% 12% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(220 10% 12% / 0.00), 0px 4px 6px -1px hsl(220 10% 12% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(220 10% 12% / 0.00), 0px 8px 10px -1px hsl(220 10% 12% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(220 10% 12% / 0.00);
-  --tracking-normal: 0em;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --radius: .625rem;
+  --shadow-2xs: 0 1px 2px 0 rgb(0 0 0 / 0.03);
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.08);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.08);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.05);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.20);
+  --tracking-normal: -0.011em;
   --spacing: 0.25rem;
 
 /* Fallback for older browsers */
@@ -93,48 +93,48 @@
   --opaque-button-border-intensity: 9;
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
-  --background: 220 12% 8%;
-  --foreground: 220 10% 95%;
-  --border: 220 10% 18%;
-  --card: 220 12% 10%;
-  --card-foreground: 220 10% 95%;
-  --card-border: 220 10% 14%;
-  --sidebar: 220 14% 12%;
-  --sidebar-foreground: 220 10% 95%;
-  --sidebar-border: 220 12% 16%;
+  --background: 224 71% 4%;
+  --foreground: 210 20% 98%;
+  --border: 215 28% 17%;
+  --card: 222 47% 8%;
+  --card-foreground: 210 20% 98%;
+  --card-border: 215 28% 17%;
+  --sidebar: 222 47% 10%;
+  --sidebar-foreground: 210 20% 98%;
+  --sidebar-border: 215 28% 17%;
   --sidebar-primary: 220 85% 55%;
   --sidebar-primary-foreground: 220 85% 98%;
-  --sidebar-accent: 220 12% 16%;
-  --sidebar-accent-foreground: 220 10% 95%;
+  --sidebar-accent: 215 28% 17%;
+  --sidebar-accent-foreground: 210 20% 98%;
   --sidebar-ring: 220 85% 55%;
-  --popover: 220 12% 14%;
-  --popover-foreground: 220 10% 95%;
-  --popover-border: 220 10% 18%;
-  --primary: 174 62% 48%;
-  --primary-foreground: 174 62% 98%;
-  --secondary: 220 10% 18%;
-  --secondary-foreground: 220 10% 95%;
-  --muted: 220 12% 16%;
-  --muted-foreground: 220 8% 65%;
-  --accent: 220 12% 15%;
-  --accent-foreground: 220 10% 95%;
-  --destructive: 0 72% 51%;
-  --destructive-foreground: 0 85% 98%;
-  --input: 220 10% 35%;
-  --ring: 174 62% 48%;
+  --popover: 222 47% 8%;
+  --popover-foreground: 210 20% 98%;
+  --popover-border: 215 28% 17%;
+  --primary: 171 76% 46%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 215 28% 17%;
+  --secondary-foreground: 210 20% 98%;
+  --muted: 215 28% 17%;
+  --muted-foreground: 217 10% 64%;
+  --accent: 215 28% 17%;
+  --accent-foreground: 210 20% 98%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 215 28% 17%;
+  --ring: 171 76% 46%;
   --chart-1: 220 85% 65%;
   --chart-2: 195 75% 62%;
   --chart-3: 245 70% 70%;
   --chart-4: 280 65% 68%;
   --chart-5: 340 75% 65%;
-  --shadow-2xs: 0px 2px 0px 0px hsl(220 10% 95% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(220 10% 95% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(220 10% 95% / 0.00), 0px 1px 2px -1px hsl(220 10% 95% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(220 10% 95% / 0.00), 0px 1px 2px -1px hsl(220 10% 95% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(220 10% 95% / 0.00), 0px 2px 4px -1px hsl(220 10% 95% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(220 10% 95% / 0.00), 0px 4px 6px -1px hsl(220 10% 95% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(220 10% 95% / 0.00), 0px 8px 10px -1px hsl(220 10% 95% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(220 10% 95% / 0.00);
+  --shadow-2xs: 0 1px 2px 0 rgb(0 0 0 / 0.15);
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.20);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.25), 0 1px 2px -1px rgb(0 0 0 / 0.25);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.25), 0 1px 2px -1px rgb(0 0 0 / 0.25);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.30), 0 2px 4px -2px rgb(0 0 0 / 0.20);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.30), 0 4px 6px -4px rgb(0 0 0 / 0.20);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.30), 0 8px 10px -6px rgb(0 0 0 / 0.20);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.50);
 
 /* Fallback for older browsers */
   --sidebar-primary-border: hsl(var(--sidebar-primary));
@@ -172,29 +172,16 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.025em;
+    font-weight: 600;
   }
 }
 
-/**
- * Using the elevate system.
- * Automatic contrast adjustment.
- *
- * <element className="hover-elevate" />
- * <element className="active-elevate-2" />
- *
- * // Using the tailwind utility when a data attribute is "on"
- * <element className="toggle-elevate data-[state=on]:toggle-elevated" />
- * // Or manually controlling the toggle state
- * <element className="toggle-elevate toggle-elevated" />
- *
- * Elevation systems have to handle many states.
- * - not-hovered, vs. hovered vs. active  (three mutually exclusive states)
- * - toggled or not
- * - focused or not (this is not handled with these utilities)
- *
- * Even without handling focused or not, this is six possible combinations that
- * need to be distinguished from eachother visually.
- */
 @layer utilities {
 
   /* Hide ugly search cancel button in Chrome until we can style it properly */
@@ -209,42 +196,27 @@
     pointer-events: none;
   }
 
-  /* .no-default-hover-elevate/no-default-active-elevate is an escape hatch so consumers of
-   * buttons/badges can remove the automatic brightness adjustment on interactions
-   * and program their own. */
   .no-default-hover-elevate {}
-
   .no-default-active-elevate {}
 
-
-  /**
-   * Toggleable backgrounds go behind the content. Hoverable/active goes on top.
-   * This way they can stack/compound. Both will overlap the parent's borders!
-   * So borders will be automatically adjusted both on toggle, and hover/active,
-   * and they will be compounded.
-   */
   .toggle-elevate::before,
   .toggle-elevate-2::before {
     content: "";
     pointer-events: none;
     position: absolute;
     inset: 0px;
-    /*border-radius: inherit;   match rounded corners */
     border-radius: inherit;
     z-index: -1;
-    /* sits behind content but above backdrop */
   }
 
   .toggle-elevate.toggle-elevated::before {
     background-color: var(--elevate-2);
   }
 
-  /* If there's a 1px border, adjust the inset so that it covers that parent's border */
   .border.toggle-elevate::before {
     inset: -1px;
   }
 
-  /* Does not work on elements with overflow:hidden! */
   .hover-elevate:not(.no-default-hover-elevate),
   .active-elevate:not(.no-default-active-elevate),
   .hover-elevate-2:not(.no-default-hover-elevate),
@@ -261,10 +233,8 @@
     pointer-events: none;
     position: absolute;
     inset: 0px;
-    /*border-radius: inherit;   match rounded corners */
     border-radius: inherit;
     z-index: 999;
-    /* sits in front of content */
   }
 
   .hover-elevate:hover:not(.no-default-hover-elevate)::after,
@@ -277,7 +247,6 @@
     background-color: var(--elevate-2);
   }
 
-  /* If there's a 1px border, adjust the inset so that it covers that parent's border */
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after,
   .border.active-elevate:not(.no-active-interaction-elevate)::after,
   .border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
@@ -286,4 +255,3 @@
     inset: -1px;
   }
 }
-

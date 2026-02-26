@@ -94,16 +94,19 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b">
+      <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => setLocation("/")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-xl font-semibold">Admin Panel</h1>
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+            <Shield className="w-4 h-4 text-primary" />
+          </div>
+          <h1 className="text-lg font-semibold tracking-tight">Admin Panel</h1>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-5xl">
+      <main className="container mx-auto px-4 py-8 max-w-5xl animate-fade-in">
         <Tabs defaultValue="users">
           <TabsList className="mb-6">
             <TabsTrigger value="users">Users ({users.length})</TabsTrigger>
@@ -146,7 +149,7 @@ export default function Admin() {
                           </TableCell>
                           <TableCell>
                             {u.approved ? (
-                              <Badge className="bg-green-500">Approved</Badge>
+                              <Badge className="bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:text-green-300 border-0">Approved</Badge>
                             ) : (
                               <Badge variant="outline">Pending</Badge>
                             )}
@@ -245,9 +248,9 @@ export default function Admin() {
                             </TableCell>
                             <TableCell>
                               {session.status === "pending_review" ? (
-                                <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending Review</Badge>
+                                <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300 border-0">Pending Review</Badge>
                               ) : session.status === "completed" ? (
-                                <Badge className="bg-green-500">Completed</Badge>
+                                <Badge className="bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:text-green-300 border-0">Completed</Badge>
                               ) : (
                                 <Badge variant="secondary">{session.status}</Badge>
                               )}
@@ -330,7 +333,7 @@ export default function Admin() {
                               {isExpired ? (
                                 <Badge variant="secondary">Expired</Badge>
                               ) : (
-                                <Badge className="bg-green-500">Active</Badge>
+                                <Badge className="bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:text-green-300 border-0">Active</Badge>
                               )}
                             </TableCell>
                           </TableRow>

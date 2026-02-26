@@ -187,17 +187,17 @@ export default function TaskPage() {
     return (
       <div className="flex items-center gap-3">
         <div
-          className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+          className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-all ${
             isCompleted
-              ? "bg-primary text-primary-foreground"
+              ? "bg-primary text-primary-foreground shadow-sm"
               : isActive
-                ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2"
+                ? "bg-primary text-primary-foreground ring-2 ring-primary/30 ring-offset-2 shadow-sm"
                 : "bg-muted text-muted-foreground"
           }`}
         >
           {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : step}
         </div>
-        <span className={`text-sm ${isActive ? "font-medium" : "text-muted-foreground"}`}>
+        <span className={`text-sm ${isActive ? "font-medium text-foreground" : "text-muted-foreground"}`}>
           {label}
         </span>
       </div>
@@ -207,39 +207,46 @@ export default function TaskPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b">
+      <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <Button variant="ghost" size="sm" onClick={() => setLocation("/")}>
               <ArrowLeft className="mr-1 h-4 w-4" />
               Back
             </Button>
-            <h1 className="text-xl font-semibold">Neon Audio</h1>
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+              <svg className="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                <line x1="12" x2="12" y1="19" y2="22" />
+              </svg>
+            </div>
+            <h1 className="text-lg font-semibold tracking-tight">Neon Audio</h1>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">{user?.username}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground hidden sm:inline">{user?.username}</span>
             <NotificationBell />
             {user?.role === "admin" && (
               <Button variant="outline" size="sm" onClick={() => setLocation("/admin")}>
-                <Shield className="mr-1 h-4 w-4" />
+                <Shield className="mr-1.5 h-3.5 w-3.5" />
                 Admin
               </Button>
             )}
             <Button variant="ghost" size="sm" onClick={handleLogout}>
-              <LogOut className="mr-1 h-4 w-4" />
+              <LogOut className="mr-1.5 h-3.5 w-3.5" />
               Sign Out
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-3xl space-y-6">
+      <main className="container mx-auto px-4 py-8 max-w-3xl space-y-6 animate-fade-in">
         {/* Task Header */}
         <div>
-          <h2 className="text-2xl font-bold">{taskDef.name}</h2>
+          <h2 className="text-2xl font-bold tracking-tight">{taskDef.name}</h2>
           <p className="text-muted-foreground mt-1">{taskDef.description}</p>
-          <div className="flex items-center gap-3 mt-2 text-sm">
-            <Badge className="bg-green-100 text-green-800 hover:bg-green-100 font-semibold">
+          <div className="flex items-center gap-3 mt-3 text-sm">
+            <Badge className="bg-primary/10 text-primary hover:bg-primary/10 font-semibold border-0">
               {"payType" in taskDef && taskDef.payType === "fixed"
                 ? `$${taskDef.hourlyRate}, one time (~${"estimatedMinutes" in taskDef ? taskDef.estimatedMinutes : 15} min)`
                 : `$${taskDef.hourlyRate}/hr`}
@@ -465,7 +472,7 @@ export default function TaskPage() {
 
         {/* Step 4: Create Room */}
         {partnerApproved && !roomCreated && (
-          <Card className="border-primary">
+          <Card className="border-primary/30 shadow-md">
             <CardHeader>
               <CardTitle className="text-lg">Partner Approved!</CardTitle>
               <CardDescription>
@@ -498,7 +505,7 @@ export default function TaskPage() {
 
         {/* Step 5: Join Room */}
         {roomCreated && (
-          <Card className="border-primary">
+          <Card className="border-primary/30 shadow-md">
             <CardHeader>
               <CardTitle className="text-lg">Room Ready!</CardTitle>
               <CardDescription>

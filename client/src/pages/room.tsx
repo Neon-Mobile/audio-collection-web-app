@@ -578,7 +578,7 @@ export default function RoomPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="border-b px-4 py-3 flex items-center justify-between">
+      <header className="border-b bg-card/80 backdrop-blur-sm px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => setLocation("/")}>
             <ArrowLeft className="h-4 w-4" />
@@ -730,17 +730,17 @@ export default function RoomPage() {
             )}
 
             {/* Participant grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {participants.map((p) => (
-                <Card key={p.id} className={`text-center ${p.isLocal ? "border-primary" : ""}`}>
+                <Card key={p.id} className={`text-center transition-all ${p.isLocal ? "border-primary/30 shadow-md" : "hover:shadow-md"}`}>
                   <CardContent className="pt-6 pb-4">
-                    <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-2">
-                      <span className="text-2xl font-semibold text-muted-foreground">
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2 ${p.isLocal ? "bg-primary/10" : "bg-muted"}`}>
+                      <span className={`text-2xl font-semibold ${p.isLocal ? "text-primary" : "text-muted-foreground"}`}>
                         {p.userName.charAt(0).toUpperCase()}
                       </span>
                     </div>
                     <p className="text-sm font-medium truncate">{p.userName}</p>
-                    <div className="mt-1">
+                    <div className="mt-1.5">
                       {p.audioOn ? (
                         <Mic className="h-4 w-4 text-green-500 mx-auto" />
                       ) : (
@@ -757,8 +757,8 @@ export default function RoomPage() {
 
       {/* Controls bar */}
       {callState === "joined" && (
-        <footer className="border-t px-4 py-4">
-          <div className="flex items-center justify-center gap-4">
+        <footer className="border-t bg-card/80 backdrop-blur-sm px-4 py-4">
+          <div className="flex items-center justify-center gap-3">
             <Button
               variant={isMicMuted ? "destructive" : "secondary"}
               size="lg"
