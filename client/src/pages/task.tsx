@@ -248,7 +248,7 @@ export default function TaskPage() {
           <div className="flex items-center gap-3 mt-3 text-sm">
             <Badge className="bg-primary/10 text-primary hover:bg-primary/10 font-semibold border-0">
               {"payType" in taskDef && taskDef.payType === "fixed"
-                ? `$${taskDef.hourlyRate}, one time (~${"estimatedMinutes" in taskDef ? taskDef.estimatedMinutes : 15} min)`
+                ? `$${taskDef.hourlyRate}, one time${"estimatedMinutes" in taskDef ? ` (~${taskDef.estimatedMinutes} min)` : ""}`
                 : `$${taskDef.hourlyRate}/hr`}
             </Badge>
             <span className="flex items-center gap-1 text-muted-foreground">

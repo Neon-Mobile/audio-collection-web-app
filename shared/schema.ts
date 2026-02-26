@@ -48,7 +48,6 @@ export const TASK_TYPES = [
     description: "Have a joyful, happy conversation with your partner.",
     hourlyRate: 20,
     payType: "fixed" as const,
-    estimatedMinutes: 15,
     availableUntil: "2026-03-07",
     requiresPartner: true,
     instructions: [
@@ -64,7 +63,6 @@ export const TASK_TYPES = [
     description: "Have a surprised, shocked conversation with your partner.",
     hourlyRate: 20,
     payType: "fixed" as const,
-    estimatedMinutes: 15,
     availableUntil: "2026-03-07",
     requiresPartner: true,
     instructions: [
@@ -80,7 +78,6 @@ export const TASK_TYPES = [
     description: "Have a fearful, scared conversation with your partner.",
     hourlyRate: 20,
     payType: "fixed" as const,
-    estimatedMinutes: 15,
     availableUntil: "2026-03-07",
     requiresPartner: true,
     instructions: [
@@ -96,7 +93,6 @@ export const TASK_TYPES = [
     description: "Have an angry, frustrated conversation with your partner.",
     hourlyRate: 20,
     payType: "fixed" as const,
-    estimatedMinutes: 15,
     availableUntil: "2026-03-07",
     requiresPartner: true,
     instructions: [
@@ -112,7 +108,6 @@ export const TASK_TYPES = [
     description: "Have a sad, upset conversation with your partner.",
     hourlyRate: 20,
     payType: "fixed" as const,
-    estimatedMinutes: 15,
     availableUntil: "2026-03-07",
     requiresPartner: true,
     instructions: [
@@ -128,7 +123,6 @@ export const TASK_TYPES = [
     description: "Have a confused, puzzled conversation with your partner.",
     hourlyRate: 20,
     payType: "fixed" as const,
-    estimatedMinutes: 15,
     availableUntil: "2026-03-07",
     requiresPartner: true,
     instructions: [
@@ -144,7 +138,6 @@ export const TASK_TYPES = [
     description: "Have a proud, triumphant conversation with your partner.",
     hourlyRate: 20,
     payType: "fixed" as const,
-    estimatedMinutes: 15,
     availableUntil: "2026-03-07",
     requiresPartner: true,
     instructions: [
