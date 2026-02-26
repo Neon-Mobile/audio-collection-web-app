@@ -51,6 +51,7 @@ export const TASK_TYPES = [
     availableUntil: "2026-03-07",
     requiresPartner: true,
     sampleAudio: "/samples/emotion-joy.wav",
+    sampleAudioDescription: "Listen to a sample to get an idea of what a highly emotional section for 'joy/excitement' sounds like.",
     instructions: [
       "Find a comfortable, private space.",
       "Have a conversation that naturally brings out joyful and happy emotions.",
@@ -131,6 +132,7 @@ export const TASK_TYPES = [
     availableUntil: "2026-03-07",
     requiresPartner: true,
     sampleAudio: "/samples/emotion-confusion.wav",
+    sampleAudioDescription: "Listen to a sample to get an idea of what a highly emotional section for 'confusion' sounds like.",
     instructions: [
       "Find a comfortable, private space.",
       "Have a conversation that naturally brings out confusion and puzzlement.",

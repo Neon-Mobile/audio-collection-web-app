@@ -299,7 +299,7 @@ export default function TaskPage() {
                 <Separator />
                 <div className="space-y-2">
                   <h3 className="font-semibold text-sm">Example Recording</h3>
-                  <p className="text-sm text-muted-foreground">Listen to a sample to get an idea of what we're looking for.</p>
+                  <p className="text-sm text-muted-foreground">{"sampleAudioDescription" in taskDef ? taskDef.sampleAudioDescription : "Listen to a sample to get an idea of what we're looking for."}</p>
                   <audio controls className="w-full" preload="metadata">
                     <source src={taskDef.sampleAudio} type="audio/wav" />
                   </audio>
