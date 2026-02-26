@@ -240,7 +240,9 @@ export default function TaskPage() {
           <p className="text-muted-foreground mt-1">{taskDef.description}</p>
           <div className="flex items-center gap-3 mt-2 text-sm">
             <Badge className="bg-green-100 text-green-800 hover:bg-green-100 font-semibold">
-              ${taskDef.hourlyRate}/hr
+              {"payType" in taskDef && taskDef.payType === "fixed"
+                ? `$${taskDef.hourlyRate}, one time (~${"estimatedMinutes" in taskDef ? taskDef.estimatedMinutes : 15} min)`
+                : `$${taskDef.hourlyRate}/hr`}
             </Badge>
             <span className="flex items-center gap-1 text-muted-foreground">
               <Users className="h-3.5 w-3.5" />
@@ -300,7 +302,7 @@ export default function TaskPage() {
                 <li>Once both of you are in the room, the <strong className="text-foreground">"Record Both"</strong> button will become active. Click it to start recording.</li>
                 <li>Have your conversation following the task guidelines above. A timer will show the recording duration.</li>
                 <li>When you're done, click <strong className="text-foreground">"Stop Recording"</strong>. Your audio will be uploaded and processed automatically.</li>
-                <li>You'll be asked if the task is complete — click <strong className="text-foreground">"Mark Task Complete"</strong> to finish, or <strong className="text-foreground">"Keep Going"</strong> to record another take.</li>
+                <li>You'll be asked if the task is complete — click <strong className="text-foreground">"Submit for Review"</strong> to finish, or <strong className="text-foreground">"Keep Going"</strong> to record another take.</li>
               </ol>
             </div>
 

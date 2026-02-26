@@ -28,9 +28,11 @@ export const TASK_TYPES = [
   },
   {
     id: "emotion-joy",
-    name: "Joyful / Happy Conversation",
+    name: "Emotional Conversation - Joy",
     description: "Have a joyful, happy conversation with your partner.",
-    hourlyRate: 25,
+    hourlyRate: 20,
+    payType: "fixed" as const,
+    estimatedMinutes: 15,
     availableUntil: "2026-04-01",
     requiresPartner: true,
     instructions: [
@@ -42,9 +44,11 @@ export const TASK_TYPES = [
   },
   {
     id: "emotion-surprise",
-    name: "Surprise / Shocked Conversation",
+    name: "Emotional Conversation - Surprise",
     description: "Have a surprised, shocked conversation with your partner.",
-    hourlyRate: 25,
+    hourlyRate: 20,
+    payType: "fixed" as const,
+    estimatedMinutes: 15,
     availableUntil: "2026-04-01",
     requiresPartner: true,
     instructions: [
@@ -56,9 +60,11 @@ export const TASK_TYPES = [
   },
   {
     id: "emotion-fear",
-    name: "Fear / Scared Conversation",
+    name: "Emotional Conversation - Fear",
     description: "Have a fearful, scared conversation with your partner.",
-    hourlyRate: 25,
+    hourlyRate: 20,
+    payType: "fixed" as const,
+    estimatedMinutes: 15,
     availableUntil: "2026-04-01",
     requiresPartner: true,
     instructions: [
@@ -70,9 +76,11 @@ export const TASK_TYPES = [
   },
   {
     id: "emotion-anger",
-    name: "Anger / Frustrated Conversation",
+    name: "Emotional Conversation - Anger",
     description: "Have an angry, frustrated conversation with your partner.",
-    hourlyRate: 25,
+    hourlyRate: 20,
+    payType: "fixed" as const,
+    estimatedMinutes: 15,
     availableUntil: "2026-04-01",
     requiresPartner: true,
     instructions: [
@@ -84,9 +92,11 @@ export const TASK_TYPES = [
   },
   {
     id: "emotion-sadness",
-    name: "Sadness / Upset Conversation",
+    name: "Emotional Conversation - Sadness",
     description: "Have a sad, upset conversation with your partner.",
-    hourlyRate: 25,
+    hourlyRate: 20,
+    payType: "fixed" as const,
+    estimatedMinutes: 15,
     availableUntil: "2026-04-01",
     requiresPartner: true,
     instructions: [
@@ -98,9 +108,11 @@ export const TASK_TYPES = [
   },
   {
     id: "emotion-confusion",
-    name: "Confusion / Puzzled Conversation",
+    name: "Emotional Conversation - Confusion",
     description: "Have a confused, puzzled conversation with your partner.",
-    hourlyRate: 25,
+    hourlyRate: 20,
+    payType: "fixed" as const,
+    estimatedMinutes: 15,
     availableUntil: "2026-04-01",
     requiresPartner: true,
     instructions: [
@@ -112,9 +124,11 @@ export const TASK_TYPES = [
   },
   {
     id: "emotion-pride",
-    name: "Pride / Triumphant Conversation",
+    name: "Emotional Conversation - Pride",
     description: "Have a proud, triumphant conversation with your partner.",
-    hourlyRate: 25,
+    hourlyRate: 20,
+    payType: "fixed" as const,
+    estimatedMinutes: 15,
     availableUntil: "2026-04-01",
     requiresPartner: true,
     instructions: [

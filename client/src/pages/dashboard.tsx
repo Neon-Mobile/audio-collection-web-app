@@ -246,7 +246,9 @@ export default function Dashboard() {
                               <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-muted-foreground">
                                 <span className="flex items-center gap-1">
                                   <DollarSign className="h-3.5 w-3.5" />
-                                  ${task.hourlyRate}/hr
+                                  {"payType" in task && task.payType === "fixed"
+                                    ? `$${task.hourlyRate}, one time (~${"estimatedMinutes" in task ? task.estimatedMinutes : 15} min)`
+                                    : `$${task.hourlyRate}/hr`}
                                 </span>
                                 <span className="flex items-center gap-1">
                                   <Calendar className="h-3.5 w-3.5" />
