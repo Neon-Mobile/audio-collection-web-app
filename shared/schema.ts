@@ -50,6 +50,7 @@ export const TASK_TYPES = [
     payType: "fixed" as const,
     availableUntil: "2026-03-07",
     requiresPartner: true,
+    sampleAudio: "/samples/emotion-joy.wav",
     instructions: [
       "Find a comfortable, private space.",
       "Have a conversation that naturally brings out joyful and happy emotions.",
@@ -74,6 +75,7 @@ export const TASK_TYPES = [
   },
   {
     id: "emotion-fear",
+    archived: true,
     name: "Emotional Conversation - Fear",
     description: "Have a fearful, scared conversation with your partner.",
     hourlyRate: 20,
@@ -89,6 +91,7 @@ export const TASK_TYPES = [
   },
   {
     id: "emotion-anger",
+    archived: true,
     name: "Emotional Conversation - Anger",
     description: "Have an angry, frustrated conversation with your partner.",
     hourlyRate: 20,
@@ -104,6 +107,7 @@ export const TASK_TYPES = [
   },
   {
     id: "emotion-sadness",
+    archived: true,
     name: "Emotional Conversation - Sadness",
     description: "Have a sad, upset conversation with your partner.",
     hourlyRate: 20,
@@ -125,6 +129,7 @@ export const TASK_TYPES = [
     payType: "fixed" as const,
     availableUntil: "2026-03-07",
     requiresPartner: true,
+    sampleAudio: "/samples/emotion-confusion.wav",
     instructions: [
       "Find a comfortable, private space.",
       "Have a conversation that naturally brings out confusion and puzzlement.",
@@ -134,6 +139,7 @@ export const TASK_TYPES = [
   },
   {
     id: "emotion-pride",
+    archived: true,
     name: "Emotional Conversation - Pride",
     description: "Have a proud, triumphant conversation with your partner.",
     hourlyRate: 20,
