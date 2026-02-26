@@ -60,6 +60,7 @@ export const TASK_TYPES = [
   },
   {
     id: "emotion-surprise",
+    archived: true,
     name: "Emotional Conversation - Surprise",
     description: "Have a surprised, shocked conversation with your partner.",
     hourlyRate: 20,
