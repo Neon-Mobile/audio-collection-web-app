@@ -21,7 +21,7 @@ export const TASK_TYPES = [
     requiresPartner: true,
     instructions: [
       "Find a quiet room with minimal background noise.",
-      "Speak softly or in a whisper throughout the entire conversation.",
+      "Have a normal phone conversation but whispering or in a soft voice throughout the call.",
       "Discuss any topic you like — the content does not matter, only the vocal style.",
       "Aim for at least 20 minutes of natural conversation.",
     ],

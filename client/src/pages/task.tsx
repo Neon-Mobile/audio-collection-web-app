@@ -265,7 +265,7 @@ export default function TaskPage() {
         {/* Step 1: Instructions */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">How This Task Works</CardTitle>
+            <CardTitle className="text-lg">Instructions</CardTitle>
             <CardDescription>Read through these instructions carefully before starting.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -274,7 +274,13 @@ export default function TaskPage() {
               <h3 className="font-semibold text-sm">What You'll Be Doing</h3>
               <ol className="list-decimal list-inside space-y-1.5 text-sm text-muted-foreground">
                 {taskDef.instructions.map((instruction, i) => (
-                  <li key={i}>{instruction}</li>
+                  <li key={i}>
+                    {instruction.includes("whispering") || instruction.includes("emotionally") ? (
+                      <strong className="text-foreground">{instruction}</strong>
+                    ) : (
+                      instruction
+                    )}
+                  </li>
                 ))}
               </ol>
             </div>
