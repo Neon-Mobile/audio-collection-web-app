@@ -719,6 +719,16 @@ export default function RoomPage() {
               </Card>
             )}
 
+            {/* Recording notice */}
+            {!isRecording && (
+              <div className="flex items-center gap-3 p-4 rounded-lg border-2 border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-700">
+                <Info className="h-5 w-5 text-amber-600 shrink-0" />
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                  You are not being recorded. Recording only starts when you press <strong>"Record Both"</strong> below.
+                </p>
+              </div>
+            )}
+
             {/* Participant grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {participants.map((p) => (
