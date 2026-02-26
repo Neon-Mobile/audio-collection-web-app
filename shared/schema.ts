@@ -70,7 +70,7 @@ export const TASK_TYPES = [
     instructions: [
       "Find a comfortable, private space.",
       "Have a conversation that naturally brings out fear and being scared.",
-      "Discuss scary experiences, fears, creepy stories, or role-play tense scenarios together.",
+      "Discuss scary experiences, fears, or creepy stories together.",
       "Example call breakdown: ~2 min catching up with your friend, ~3 min telling each other about something that genuinely scared you or a creepy experience, ~1 min winding down the conversation, then press Stop Recording.",
     ],
   },
