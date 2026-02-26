@@ -23,7 +23,7 @@ export const TASK_TYPES = [
       "Find a quiet room with minimal background noise.",
       "Speak softly or in a whisper throughout the entire conversation.",
       "Discuss any topic you like — the content does not matter, only the vocal style.",
-      "Aim for at least 5 minutes of natural conversation.",
+      "Aim for at least 20 minutes of natural conversation.",
     ],
   },
   {
@@ -37,7 +37,7 @@ export const TASK_TYPES = [
       "Find a comfortable, private space.",
       "Have a conversation that naturally brings out strong emotions — excitement, surprise, frustration, joy.",
       "You can discuss real topics or role-play a scenario together.",
-      "Aim for at least 5 minutes of natural conversation.",
+      "Aim for at least 20 minutes of natural conversation.",
     ],
   },
 ] as const;
