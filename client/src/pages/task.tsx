@@ -293,7 +293,7 @@ export default function TaskPage() {
               <ol className="list-decimal list-inside space-y-1.5 text-sm text-muted-foreground">
                 <li>Click <strong className="text-foreground">"Start This Task"</strong> below to begin.</li>
                 <li>Enter your partner's email address in the field that appears, then click <strong className="text-foreground">"Send Invitation"</strong>.</li>
-                <li>If your partner is already on Neon Audio, they'll be linked immediately. If they're new, they'll receive a sign-up link and will need to complete onboarding and get approved by an admin before you can proceed.</li>
+                <li>If your partner is already on Neon Audio, they'll be linked immediately. If they're new, tell them to go to <strong className="text-foreground">neon.audio</strong> and sign up using the same email you invited them with. They'll need to complete onboarding and get approved by an admin before you can proceed.</li>
                 <li>Once your partner is approved, click <strong className="text-foreground">"Create Room & Invite Partner"</strong> to create your audio room.</li>
                 <li>Click <strong className="text-foreground">"Join Room"</strong> to enter the call. Your browser will ask for microphone permission — click <strong className="text-foreground">"Allow"</strong>.</li>
                 <li>Wait for your partner to join. You'll see them appear in the participant list.</li>
@@ -311,7 +311,7 @@ export default function TaskPage() {
               <h3 className="font-semibold text-sm">What to Tell Your Partner</h3>
               <p className="text-sm text-muted-foreground">Share these steps with the friend you're inviting:</p>
               <ol className="list-decimal list-inside space-y-1.5 text-sm text-muted-foreground">
-                <li>You'll receive an email or notification inviting you to a task. If you're new, go to <strong className="text-foreground">neon.audio</strong> and sign up using the same email address you were invited with.</li>
+                <li>Go to <strong className="text-foreground">neon.audio</strong> and sign up using the same email address your partner invited you with.</li>
                 <li>Complete the onboarding form (basic info about yourself) and record 3 short voice samples.</li>
                 <li>Wait for an admin to approve your account — this usually happens quickly.</li>
                 <li>Once approved, log in and look for a notification (bell icon, top right) with a room invitation. Click <strong className="text-foreground">"Accept"</strong>.</li>
