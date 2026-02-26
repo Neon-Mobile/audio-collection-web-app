@@ -44,7 +44,7 @@ export const TASK_TYPES = [
   },
   {
     id: "emotion-joy",
-    name: "Emotional Conversation - Joy",
+    name: "Emotional Conversation - Joy / Excitement",
     description: "Have a joyful, happy conversation with your partner.",
     hourlyRate: 20,
     payType: "fixed" as const,
