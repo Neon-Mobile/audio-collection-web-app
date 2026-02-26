@@ -36,9 +36,9 @@ export const TASK_TYPES = [
     instructions: [
       "Find a comfortable, private space.",
       "Have a natural 10–20 minute phone conversation with your partner.",
-      "Let the conversation flow naturally, but make sure to bring out strong emotions at times — joy, frustration, excitement, sadness, surprise, whatever comes up.",
-      "Don't force it — just talk about real things happening in your lives and let the emotion come through authentically.",
-      "Example call breakdown: ~2 min catching up, ~12–15 min of natural conversation with emotionally expressive moments throughout, ~2 min winding down, then press Stop Recording.",
+      "Talk naturally with your friend, but slightly exaggerate your emotions — maybe you go on an angry rant about something at one point, or get really excited about something coming up, or share something that made you sad.",
+      "Don't force it — just have a real conversation and let the emotion come through. When you feel something, lean into it a bit more than usual.",
+      "When you're done, press Stop Recording.",
     ],
   },
   {
