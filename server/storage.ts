@@ -68,6 +68,7 @@ export interface IStorage {
   getTaskSessionsByPartner(partnerId: string): Promise<TaskSession[]>;
   getTaskSessionsByPartnerEmail(email: string): Promise<TaskSession[]>;
   updateTaskSessionsForApprovedPartner(partnerId: string): Promise<void>;
+  getAllTaskSessionsWithUsers(): Promise<(TaskSession & { userEmail: string })[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -346,6 +347,27 @@ export class DatabaseStorage implements IStorage {
       .update(taskSessions)
       .set({ partnerStatus: "approved", status: "ready_to_record", updatedAt: new Date() })
       .where(and(eq(taskSessions.partnerId, partnerId), eq(taskSessions.partnerStatus, "registered")));
+  }
+
+  async getAllTaskSessionsWithUsers(): Promise<(TaskSession & { userEmail: string })[]> {
+    const rows = await db
+      .select({
+        id: taskSessions.id,
+        taskType: taskSessions.taskType,
+        userId: taskSessions.userId,
+        partnerId: taskSessions.partnerId,
+        partnerEmail: taskSessions.partnerEmail,
+        partnerStatus: taskSessions.partnerStatus,
+        roomId: taskSessions.roomId,
+        status: taskSessions.status,
+        createdAt: taskSessions.createdAt,
+        updatedAt: taskSessions.updatedAt,
+        userEmail: users.username,
+      })
+      .from(taskSessions)
+      .innerJoin(users, eq(taskSessions.userId, users.id))
+      .orderBy(desc(taskSessions.updatedAt));
+    return rows;
   }
 }
 

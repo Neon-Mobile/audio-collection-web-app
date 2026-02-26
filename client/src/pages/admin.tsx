@@ -8,8 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Check, Download, Shield, ShieldOff } from "lucide-react";
-import type { User, Room, Recording } from "@shared/schema";
+import { Loader2, ArrowLeft, Check, X, Download, Shield, ShieldOff } from "lucide-react";
+import { TASK_TYPES } from "@shared/schema";
+import type { User, Room, Recording, TaskSession } from "@shared/schema";
 
 export default function Admin() {
   const { user } = useAuthContext();
@@ -31,6 +32,10 @@ export default function Admin() {
 
   const { data: allRecordings = [], isLoading: recordingsLoading } = useQuery<Recording[]>({
     queryKey: ["/api/admin/recordings"],
+  });
+
+  const { data: allTaskSessions = [], isLoading: sessionsLoading } = useQuery<(TaskSession & { userEmail: string })[]>({
+    queryKey: ["/api/admin/task-sessions"],
   });
 
   const approveMutation = useMutation({
@@ -65,6 +70,28 @@ export default function Admin() {
     }
   };
 
+  const approveSessionMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const res = await apiRequest("PATCH", `/api/admin/task-sessions/${sessionId}/approve`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/task-sessions"] });
+      toast({ title: "Recording approved" });
+    },
+  });
+
+  const rejectSessionMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const res = await apiRequest("PATCH", `/api/admin/task-sessions/${sessionId}/reject`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/task-sessions"] });
+      toast({ title: "Recording sent back for redo" });
+    },
+  });
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
@@ -80,6 +107,7 @@ export default function Admin() {
         <Tabs defaultValue="users">
           <TabsList className="mb-6">
             <TabsTrigger value="users">Users ({users.length})</TabsTrigger>
+            <TabsTrigger value="tasks">Tasks ({allTaskSessions.length})</TabsTrigger>
             <TabsTrigger value="rooms">Rooms ({allRooms.length})</TabsTrigger>
             <TabsTrigger value="recordings">Recordings ({allRecordings.length})</TabsTrigger>
           </TabsList>
@@ -169,6 +197,91 @@ export default function Admin() {
                           </TableCell>
                         </TableRow>
                       ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Tasks Tab */}
+          <TabsContent value="tasks">
+            <Card>
+              <CardHeader>
+                <CardTitle>Task Sessions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {sessionsLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : allTaskSessions.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">No task sessions yet.</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Task</TableHead>
+                        <TableHead>User</TableHead>
+                        <TableHead>Partner</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Updated</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {allTaskSessions.map((session) => {
+                        const taskDef = TASK_TYPES.find((t) => t.id === session.taskType);
+                        return (
+                          <TableRow key={session.id}>
+                            <TableCell className="font-medium">
+                              {taskDef?.name || session.taskType}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {session.userEmail}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {session.partnerEmail || "-"}
+                            </TableCell>
+                            <TableCell>
+                              {session.status === "pending_review" ? (
+                                <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending Review</Badge>
+                              ) : session.status === "completed" ? (
+                                <Badge className="bg-green-500">Completed</Badge>
+                              ) : (
+                                <Badge variant="secondary">{session.status}</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-sm">
+                              {new Date(session.updatedAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="text-right space-x-2">
+                              {session.status === "pending_review" && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => approveSessionMutation.mutate(session.id)}
+                                    disabled={approveSessionMutation.isPending}
+                                  >
+                                    <Check className="mr-1 h-4 w-4" />
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => rejectSessionMutation.mutate(session.id)}
+                                    disabled={rejectSessionMutation.isPending}
+                                  >
+                                    <X className="mr-1 h-4 w-4" />
+                                    Reject
+                                  </Button>
+                                </>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 )}

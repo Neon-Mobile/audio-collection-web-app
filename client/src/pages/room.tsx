@@ -140,7 +140,7 @@ export default function RoomPage() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Task completed!", description: "Great work. Heading back to your dashboard." });
+      toast({ title: "Recording submitted!", description: "Your recording has been submitted for review." });
       setLocation("/");
     },
     onError: (err: Error) => {
@@ -814,7 +814,7 @@ export default function RoomPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Recordings saved!</AlertDialogTitle>
             <AlertDialogDescription>
-              Both audio tracks have been processed. Is this task complete, or do you want to record again?
+              Both audio tracks have been processed. Submit this recording for admin review, or keep going to record another take.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -830,7 +830,7 @@ export default function RoomPage() {
               {completeTaskMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
-              Mark Task Complete
+              Submit for Review
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -275,7 +275,7 @@ export default function TaskPage() {
               <ol className="list-decimal list-inside space-y-1.5 text-sm text-muted-foreground">
                 {taskDef.instructions.map((instruction, i) => (
                   <li key={i}>
-                    {instruction.includes("whispering") || instruction.includes("emotionally") ? (
+                    {/whispering|joyful|happy|surprise|shock|fear|scared|anger|frustrat|sad|upset|confus|puzzl|pride|triumph/i.test(instruction) ? (
                       <strong className="text-foreground">{instruction}</strong>
                     ) : (
                       instruction

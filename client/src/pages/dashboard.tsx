@@ -6,6 +6,7 @@ import { TASK_TYPES } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
@@ -35,7 +36,13 @@ interface TaskSession {
 
 const TASK_ICONS: Record<string, typeof Mic> = {
   "whispered-conversation": Mic,
-  "emotional-conversation": MessageCircle,
+  "emotion-joy": MessageCircle,
+  "emotion-surprise": MessageCircle,
+  "emotion-fear": MessageCircle,
+  "emotion-anger": MessageCircle,
+  "emotion-sadness": MessageCircle,
+  "emotion-confusion": MessageCircle,
+  "emotion-pride": MessageCircle,
 };
 
 function getStatusLabel(status: string): { label: string; variant: "secondary" | "default" | "outline" } {
@@ -50,6 +57,10 @@ function getStatusLabel(status: string): { label: string; variant: "secondary" |
       return { label: "Room Ready", variant: "default" };
     case "in_progress":
       return { label: "In Progress", variant: "default" };
+    case "pending_review":
+      return { label: "Pending Review", variant: "secondary" };
+    case "completed":
+      return { label: "Completed", variant: "outline" };
     default:
       return { label: status, variant: "outline" };
   }
@@ -139,7 +150,8 @@ export default function Dashboard() {
     setLocation("/login");
   };
 
-  const activeSessions = taskSessions.filter((s) => s.status !== "completed");
+  const activeSessions = taskSessions.filter((s) => s.status !== "completed" && s.status !== "pending_review");
+  const pendingReviewSessions = taskSessions.filter((s) => s.status === "pending_review");
 
   return (
     <div className="min-h-screen bg-background">
@@ -206,62 +218,66 @@ export default function Dashboard() {
         {/* Available Tasks */}
         <div>
           <h2 className="text-lg font-semibold mb-4">Available Tasks</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {TASK_TYPES.map((task) => {
-              const Icon = TASK_ICONS[task.id] || Mic;
-              const isExpired = new Date(task.availableUntil) < new Date();
-              const deadlineDate = new Date(task.availableUntil).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              });
-              return (
-                <Card
-                  key={task.id}
-                  className={`transition-colors ${isExpired ? "opacity-50" : "cursor-pointer hover:border-primary"}`}
-                  onClick={() => !isExpired && setLocation(`/task/${task.id}`)}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                          <Icon className="h-5 w-5 text-primary" />
+          <div className="border rounded-lg overflow-hidden">
+            <Table>
+              <TableBody>
+                {TASK_TYPES.map((task) => {
+                  const Icon = TASK_ICONS[task.id] || Mic;
+                  const isExpired = new Date(task.availableUntil) < new Date();
+                  const deadlineDate = new Date(task.availableUntil).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  });
+                  return (
+                    <TableRow
+                      key={task.id}
+                      className={`${isExpired ? "opacity-50" : "cursor-pointer hover:bg-muted/50"}`}
+                      onClick={() => !isExpired && setLocation(`/task/${task.id}`)}
+                    >
+                      <TableCell className="py-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 shrink-0">
+                              <Icon className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="text-base font-semibold">{task.name}</p>
+                              <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <DollarSign className="h-3.5 w-3.5" />
+                                  ${task.hourlyRate}/hr
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-3.5 w-3.5" />
+                                  {isExpired ? (
+                                    <span className="text-red-500 font-medium">Expired</span>
+                                  ) : (
+                                    <>Until {deadlineDate}</>
+                                  )}
+                                </span>
+                                {task.requiresPartner && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    <Users className="h-3 w-3 mr-1" />
+                                    Partner Required
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          {!isExpired && (
+                            <Button variant="outline" className="shrink-0 ml-4">
+                              Start Task
+                              <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
-                        <div>
-                          <CardTitle className="text-base">{task.name}</CardTitle>
-                          <CardDescription className="text-xs mt-0.5">{task.description}</CardDescription>
-                        </div>
-                      </div>
-                      <Badge className="bg-green-100 text-green-800 hover:bg-green-100 shrink-0 text-sm font-semibold">
-                        ${task.hourlyRate}/hr
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0 space-y-3">
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {isExpired ? (
-                          <span className="text-red-500 font-medium">Expired</span>
-                        ) : (
-                          <>Available until {deadlineDate}</>
-                        )}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="h-3 w-3" />
-                        {task.requiresPartner ? "Requires Partner" : "Solo"}
-                      </span>
-                    </div>
-                    {!isExpired && (
-                      <Button className="w-full" variant="outline">
-                        Start Task
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </div>
         </div>
 
@@ -314,6 +330,44 @@ export default function Dashboard() {
                   })}
                 </div>
               )}
+            </div>
+          </>
+        )}
+
+        {/* Pending Review */}
+        {pendingReviewSessions.length > 0 && (
+          <>
+            <Separator />
+            <div>
+              <h2 className="text-lg font-semibold mb-4">Pending Review</h2>
+              <div className="space-y-3">
+                {pendingReviewSessions.map((session) => {
+                  const taskDef = TASK_TYPES.find((t) => t.id === session.taskType);
+                  const Icon = TASK_ICONS[session.taskType] || Mic;
+                  return (
+                    <Card key={session.id}>
+                      <CardContent className="py-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Icon className="h-5 w-5 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">{taskDef?.name || session.taskType}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending Review</Badge>
+                                {session.partnerEmail && (
+                                  <span className="text-xs text-muted-foreground">
+                                    with {session.partnerEmail}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
             </div>
           </>
         )}

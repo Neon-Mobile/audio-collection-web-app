@@ -842,7 +842,7 @@ export async function registerRoutes(
       if (!session || (session.userId !== req.user!.id && session.partnerId !== req.user!.id)) {
         return res.status(404).json({ error: "Task session not found" });
       }
-      const updated = await storage.updateTaskSession(session.id, { status: "completed" });
+      const updated = await storage.updateTaskSession(session.id, { status: "pending_review" });
       res.json(updated);
     } catch (error) {
       console.error("Complete task session error:", error);
@@ -938,6 +938,70 @@ export async function registerRoutes(
       res.json(allRecordings);
     } catch (error) {
       console.error("Admin fetch recordings error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/task-sessions", requireAdmin, async (_req, res) => {
+    try {
+      const sessions = await storage.getAllTaskSessionsWithUsers();
+      res.json(sessions);
+    } catch (error) {
+      console.error("Admin fetch task sessions error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/admin/task-sessions/:id/approve", requireAdmin, async (req, res) => {
+    try {
+      const session = await storage.getTaskSessionById(req.params.id as string);
+      if (!session) {
+        return res.status(404).json({ error: "Task session not found" });
+      }
+      if (session.status !== "pending_review") {
+        return res.status(400).json({ error: "Session is not pending review" });
+      }
+      const updated = await storage.updateTaskSession(session.id, { status: "completed" });
+
+      const taskDef = TASK_TYPES.find((t) => t.id === session.taskType);
+      await storage.createNotification({
+        userId: session.userId,
+        type: "recording_approved",
+        title: "Recording Approved!",
+        message: `Your recording for "${taskDef?.name || session.taskType}" has been approved.`,
+        data: { taskSessionId: session.id },
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Admin approve task session error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/admin/task-sessions/:id/reject", requireAdmin, async (req, res) => {
+    try {
+      const session = await storage.getTaskSessionById(req.params.id as string);
+      if (!session) {
+        return res.status(404).json({ error: "Task session not found" });
+      }
+      if (session.status !== "pending_review") {
+        return res.status(400).json({ error: "Session is not pending review" });
+      }
+      const updated = await storage.updateTaskSession(session.id, { status: "room_created" });
+
+      const taskDef = TASK_TYPES.find((t) => t.id === session.taskType);
+      await storage.createNotification({
+        userId: session.userId,
+        type: "recording_rejected",
+        title: "Recording Needs Redo",
+        message: `Your recording for "${taskDef?.name || session.taskType}" was not approved. Please record again.`,
+        data: { taskSessionId: session.id },
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Admin reject task session error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
