@@ -16,7 +16,7 @@ export const TASK_TYPES = [
     id: "whispered-conversation",
     name: "Soft Spoken / Whispered Conversation",
     description: "Have a quiet, whispered conversation with your partner.",
-    hourlyRate: 20,
+    hourlyRate: 30,
     availableUntil: "2026-04-01",
     requiresPartner: true,
     instructions: [

@@ -265,19 +265,59 @@ export default function TaskPage() {
         {/* Step 1: Instructions */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Instructions</CardTitle>
+            <CardTitle className="text-lg">How This Task Works</CardTitle>
+            <CardDescription>Read through these instructions carefully before starting.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <ol className="list-decimal list-inside space-y-2 text-sm">
-              {taskDef.instructions.map((instruction, i) => (
-                <li key={i} className="text-muted-foreground">
-                  {instruction}
-                </li>
-              ))}
-            </ol>
+          <CardContent className="space-y-6">
+            {/* Task overview */}
+            <div className="space-y-2">
+              <h3 className="font-semibold text-sm">What You'll Be Doing</h3>
+              <ol className="list-decimal list-inside space-y-1.5 text-sm text-muted-foreground">
+                {taskDef.instructions.map((instruction, i) => (
+                  <li key={i}>{instruction}</li>
+                ))}
+              </ol>
+            </div>
+
+            <Separator />
+
+            {/* Your steps */}
+            <div className="space-y-2">
+              <h3 className="font-semibold text-sm">Your Step-by-Step Guide</h3>
+              <ol className="list-decimal list-inside space-y-1.5 text-sm text-muted-foreground">
+                <li>Click <strong className="text-foreground">"Start This Task"</strong> below to begin.</li>
+                <li>Enter your partner's email address in the field that appears, then click <strong className="text-foreground">"Send Invitation"</strong>.</li>
+                <li>If your partner is already on Neon Audio, they'll be linked immediately. If they're new, they'll receive a sign-up link and will need to complete onboarding and get approved by an admin before you can proceed.</li>
+                <li>Once your partner is approved, click <strong className="text-foreground">"Create Room & Invite Partner"</strong> to create your audio room.</li>
+                <li>Click <strong className="text-foreground">"Join Room"</strong> to enter the call. Your browser will ask for microphone permission — click <strong className="text-foreground">"Allow"</strong>.</li>
+                <li>Wait for your partner to join. You'll see them appear in the participant list.</li>
+                <li>Once both of you are in the room, the <strong className="text-foreground">"Record Both"</strong> button will become active. Click it to start recording.</li>
+                <li>Have your conversation following the task guidelines above. A timer will show the recording duration.</li>
+                <li>When you're done, click <strong className="text-foreground">"Stop Recording"</strong>. Your audio will be uploaded and processed automatically.</li>
+                <li>You'll be asked if the task is complete — click <strong className="text-foreground">"Mark Task Complete"</strong> to finish, or <strong className="text-foreground">"Keep Going"</strong> to record another take.</li>
+              </ol>
+            </div>
+
+            <Separator />
+
+            {/* Partner steps */}
+            <div className="space-y-2">
+              <h3 className="font-semibold text-sm">What to Tell Your Partner</h3>
+              <p className="text-sm text-muted-foreground">Share these steps with the friend you're inviting:</p>
+              <ol className="list-decimal list-inside space-y-1.5 text-sm text-muted-foreground">
+                <li>You'll receive an email or notification inviting you to a task. If you're new, go to <strong className="text-foreground">neon.audio</strong> and sign up using the same email address you were invited with.</li>
+                <li>Complete the onboarding form (basic info about yourself) and record 3 short voice samples.</li>
+                <li>Wait for an admin to approve your account — this usually happens quickly.</li>
+                <li>Once approved, log in and look for a notification (bell icon, top right) with a room invitation. Click <strong className="text-foreground">"Accept"</strong>.</li>
+                <li>Click <strong className="text-foreground">"Join Room"</strong> and allow microphone access when your browser asks.</li>
+                <li>Wait for your partner to start the recording. Just have a natural conversation following the task guidelines.</li>
+                <li>When the recording is done, your partner will handle stopping and completing the task.</li>
+              </ol>
+            </div>
+
             {!hasSession && (
               <Button
-                className="mt-4 w-full"
+                className="mt-2 w-full"
                 onClick={() => createSessionMutation.mutate()}
                 disabled={createSessionMutation.isPending}
               >
