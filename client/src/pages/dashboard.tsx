@@ -35,6 +35,7 @@ interface TaskSession {
 
 const TASK_ICONS: Record<string, typeof Mic> = {
   "whispered-conversation": Mic,
+  "general-emotional": MessageCircle,
   "emotion-joy": MessageCircle,
   "emotion-surprise": MessageCircle,
   "emotion-fear": MessageCircle,

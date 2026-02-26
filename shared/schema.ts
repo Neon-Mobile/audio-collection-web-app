@@ -27,6 +27,21 @@ export const TASK_TYPES = [
     ],
   },
   {
+    id: "general-emotional",
+    name: "General Emotional Conversation",
+    description: "Have a natural, emotionally expressive conversation with your partner.",
+    hourlyRate: 50,
+    availableUntil: "2026-03-06",
+    requiresPartner: true,
+    instructions: [
+      "Find a comfortable, private space.",
+      "Have a natural 10–20 minute phone conversation with your partner.",
+      "Let the conversation flow naturally, but make sure to bring out strong emotions at times — joy, frustration, excitement, sadness, surprise, whatever comes up.",
+      "Don't force it — just talk about real things happening in your lives and let the emotion come through authentically.",
+      "Example call breakdown: ~2 min catching up, ~12–15 min of natural conversation with emotionally expressive moments throughout, ~2 min winding down, then press Stop Recording.",
+    ],
+  },
+  {
     id: "emotion-joy",
     name: "Emotional Conversation - Joy",
     description: "Have a joyful, happy conversation with your partner.",
