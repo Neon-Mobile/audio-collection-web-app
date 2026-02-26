@@ -21,6 +21,7 @@ declare global {
       onboardingData: unknown;
       onboardingCompletedAt: Date | null;
       samplesCompletedAt: Date | null;
+      shortKey: string | null;
       referredBy: string | null;
       createdAt: Date;
     }
@@ -100,6 +101,7 @@ function userToSession(user: User): Express.User {
     onboardingData: user.onboardingData,
     onboardingCompletedAt: user.onboardingCompletedAt,
     samplesCompletedAt: user.samplesCompletedAt,
+    shortKey: user.shortKey,
     referredBy: user.referredBy,
     createdAt: user.createdAt,
   };

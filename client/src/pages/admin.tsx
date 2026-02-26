@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Check, X, Download, Shield, ShieldOff, Play, Square, Search, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, ArrowLeft, Check, X, Download, Shield, ShieldOff, Play, Square, Search, ArrowUpDown, ChevronDown, ChevronUp, Copy } from "lucide-react";
 import { TASK_TYPES } from "@shared/schema";
 import type { User, Room, Recording, TaskSession } from "@shared/schema";
 
@@ -556,6 +556,7 @@ export default function Admin() {
                       <TableRow>
                         <TableHead>Username</TableHead>
                         <TableHead>Name</TableHead>
+                        <TableHead>Key</TableHead>
                         <TableHead>Role</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Onboarding</TableHead>
@@ -574,6 +575,26 @@ export default function Admin() {
                                 ? `${data.firstName} ${data.lastName || ""}`.trim()
                                 : <span className="text-muted-foreground">-</span>;
                             })()}
+                          </TableCell>
+                          <TableCell>
+                            {u.shortKey ? (
+                              <div className="flex items-center gap-1">
+                                <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{u.shortKey}</code>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(u.shortKey!);
+                                    toast({ title: "Copied!", description: `Key ${u.shortKey} copied.` });
+                                  }}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Badge variant={u.role === "admin" ? "default" : "secondary"}>

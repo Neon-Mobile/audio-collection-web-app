@@ -75,7 +75,8 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   // Users
   async createUser(data: { username: string; password: string }): Promise<User> {
-    const [result] = await db.insert(users).values(data).returning();
+    const shortKey = crypto.randomBytes(6).toString("base64url").slice(0, 8);
+    const [result] = await db.insert(users).values({ ...data, shortKey }).returning();
     return result;
   }
 

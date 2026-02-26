@@ -40,13 +40,14 @@ async function runFfmpeg(args: string[]): Promise<void> {
   } catch {}
 }
 
-/** Shared core: download WebM from S3, convert to WAV, upload both to processed/NNNN/ */
+/** Shared core: download WebM from S3, convert to WAV, upload both to processed/{folderName}/ */
 async function processAudioFile(
   s3Key: string,
+  folderName: string,
   folderNumber: string,
   speakerId?: string,
 ): Promise<{ processedFolder: string; webmS3Key: string; wavS3Key: string }> {
-  const folderPrefix = `processed/${folderNumber}`;
+  const folderPrefix = `processed/${folderName}`;
   const fileStem = speakerId ? `${folderNumber}_${speakerId}` : folderNumber;
   const tmpDir = os.tmpdir();
   const webmPath = path.join(tmpDir, `audio-${fileStem}-${Date.now()}.webm`);
@@ -78,7 +79,7 @@ async function processAudioFile(
 
     console.log(`Uploaded to S3: ${webmS3Key}, ${wavS3Key}`);
 
-    return { processedFolder: folderNumber, webmS3Key, wavS3Key };
+    return { processedFolder: folderName, webmS3Key, wavS3Key };
   } finally {
     try { fs.rmSync(webmPath); } catch {}
     try { fs.rmSync(wavPath); } catch {}
@@ -102,9 +103,31 @@ export async function processRecording(recordingId: string, overrideFolderNumber
   }
 
   const folderNumber = overrideFolderNumber || await getNextFolderNumber();
-  console.log(`Processing recording ${recordingId} → processed/${folderNumber}/`);
 
-  const result = await processAudioFile(recording.s3Key, folderNumber, recording.speakerId ?? undefined);
+  // Build folder name with both participants' short keys
+  let folderName = folderNumber;
+  try {
+    const sessions = await storage.getTaskSessionsByRoom(recording.roomId);
+    const session = sessions[0];
+    if (session) {
+      const userIds = [session.userId, session.partnerId].filter(Boolean) as string[];
+      const shortKeys: string[] = [];
+      for (const uid of userIds) {
+        const u = await storage.getUserById(uid);
+        if (u?.shortKey) shortKeys.push(u.shortKey);
+      }
+      if (shortKeys.length > 0) {
+        shortKeys.sort();
+        folderName = `${folderNumber}_${shortKeys.join("_")}`;
+      }
+    }
+  } catch (err) {
+    console.warn("Could not resolve participant keys for folder name:", err);
+  }
+
+  console.log(`Processing recording ${recordingId} → processed/${folderName}/`);
+
+  const result = await processAudioFile(recording.s3Key, folderName, folderNumber, recording.speakerId ?? undefined);
   const updated = await storage.updateRecording(recordingId, {
     processedFolder: result.processedFolder,
     wavS3Key: result.wavS3Key,

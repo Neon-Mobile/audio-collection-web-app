@@ -167,6 +167,7 @@ export const users = pgTable("users", {
   onboardingData: jsonb("onboarding_data"),
   onboardingCompletedAt: timestamp("onboarding_completed_at"),
   samplesCompletedAt: timestamp("samples_completed_at"),
+  shortKey: varchar("short_key", { length: 8 }).unique(),
   referredBy: varchar("referred_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

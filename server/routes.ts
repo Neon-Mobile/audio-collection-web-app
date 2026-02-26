@@ -77,6 +77,7 @@ export async function registerRoutes(
           onboardingData: user.onboardingData,
           onboardingCompletedAt: user.onboardingCompletedAt,
           samplesCompletedAt: user.samplesCompletedAt,
+          shortKey: user.shortKey,
           referredBy: user.referredBy,
           createdAt: user.createdAt,
         },
@@ -191,7 +192,8 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Missing required fields: promptIndex, promptText, fileName" });
       }
 
-      const s3Key = `onboarding-samples/${req.user!.id}/${promptIndex}.webm`;
+      const userKey = req.user!.shortKey || req.user!.id;
+      const s3Key = `onboarding-samples/${userKey}/${promptIndex}.webm`;
 
       const uploadUrl = await generateUploadUrl({
         key: s3Key,
@@ -864,6 +866,7 @@ export async function registerRoutes(
           onboardingData: u.onboardingData,
           onboardingCompletedAt: u.onboardingCompletedAt,
           samplesCompletedAt: u.samplesCompletedAt,
+          shortKey: u.shortKey,
           createdAt: u.createdAt,
         }))
       );
