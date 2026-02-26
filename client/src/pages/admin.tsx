@@ -555,6 +555,7 @@ export default function Admin() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Username</TableHead>
+                        <TableHead>Name</TableHead>
                         <TableHead>Role</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Onboarding</TableHead>
@@ -566,6 +567,14 @@ export default function Admin() {
                       {users.map((u) => (
                         <TableRow key={u.id}>
                           <TableCell className="font-medium">{u.username}</TableCell>
+                          <TableCell className="text-sm">
+                            {(() => {
+                              const data = u.onboardingData as Record<string, string> | null;
+                              return data?.firstName
+                                ? `${data.firstName} ${data.lastName || ""}`.trim()
+                                : <span className="text-muted-foreground">-</span>;
+                            })()}
+                          </TableCell>
                           <TableCell>
                             <Badge variant={u.role === "admin" ? "default" : "secondary"}>
                               {u.role}
