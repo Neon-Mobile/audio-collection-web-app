@@ -228,10 +228,10 @@ export default function Dashboard() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold tracking-tight">Available Tasks</h2>
-            <span className="text-xs text-muted-foreground">{TASK_TYPES.length} tasks</span>
+            <span className="text-xs text-muted-foreground">{TASK_TYPES.filter(t => !("archived" in t && t.archived)).length} tasks</span>
           </div>
           <div className="space-y-2">
-            {TASK_TYPES.map((task) => {
+            {TASK_TYPES.filter(t => !("archived" in t && t.archived)).map((task) => {
               const Icon = TASK_ICONS[task.id] || Mic;
               const isExpired = new Date(task.availableUntil) < new Date();
               const deadlineDate = new Date(task.availableUntil).toLocaleDateString("en-US", {

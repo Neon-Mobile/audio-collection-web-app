@@ -33,6 +33,7 @@ export const TASK_TYPES = [
     hourlyRate: 50,
     availableUntil: "2026-03-06",
     requiresPartner: true,
+    archived: true,
     instructions: [
       "Find a comfortable, private space.",
       "Have a natural 10–20 minute phone conversation with your partner.",
