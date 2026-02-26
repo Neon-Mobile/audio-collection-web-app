@@ -79,7 +79,7 @@ export default function Register() {
               <line x1="12" x2="12" y1="19" y2="22" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Neon Audio</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Voice Atlas</h1>
           <p className="text-sm text-muted-foreground mt-1">Audio collection platform</p>
         </div>
         <Card className="shadow-lg border-border/50">

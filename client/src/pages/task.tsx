@@ -221,7 +221,7 @@ export default function TaskPage() {
                 <line x1="12" x2="12" y1="19" y2="22" />
               </svg>
             </div>
-            <h1 className="text-lg font-semibold tracking-tight">Neon Audio</h1>
+            <h1 className="text-lg font-semibold tracking-tight">Voice Atlas</h1>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground hidden sm:inline">{user?.username}</span>
@@ -302,7 +302,7 @@ export default function TaskPage() {
               <ol className="list-decimal list-inside space-y-1.5 text-sm text-muted-foreground">
                 <li>Click <strong className="text-foreground">"Start This Task"</strong> below to begin.</li>
                 <li>Enter your partner's email address in the field that appears, then click <strong className="text-foreground">"Send Invitation"</strong>.</li>
-                <li>If your partner is already on Neon Audio, they'll be linked immediately. If they're new, tell them to go to <strong className="text-foreground">neon.audio</strong> and sign up using the same email you invited them with. They'll need to complete onboarding and get approved by an admin before you can proceed.</li>
+                <li>If your partner is already on Voice Atlas, they'll be linked immediately. If they're new, tell them to go to <strong className="text-foreground">neon.audio</strong> and sign up using the same email you invited them with. They'll need to complete onboarding and get approved by an admin before you can proceed.</li>
                 <li>Once your partner is approved, click <strong className="text-foreground">"Create Room & Invite Partner"</strong> to create your audio room.</li>
                 <li>Click <strong className="text-foreground">"Join Room"</strong> to enter the call. Your browser will ask for microphone permission — click <strong className="text-foreground">"Allow"</strong>.</li>
                 <li>Wait for your partner to join. You'll see them appear in the participant list.</li>

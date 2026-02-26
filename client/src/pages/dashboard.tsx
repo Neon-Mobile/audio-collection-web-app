@@ -166,7 +166,7 @@ export default function Dashboard() {
                 <line x1="12" x2="12" y1="19" y2="22" />
               </svg>
             </div>
-            <h1 className="text-lg font-semibold tracking-tight">Neon Audio</h1>
+            <h1 className="text-lg font-semibold tracking-tight">Voice Atlas</h1>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground hidden sm:inline">{user?.username}</span>

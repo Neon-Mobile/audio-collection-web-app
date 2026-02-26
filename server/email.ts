@@ -45,15 +45,15 @@ export async function sendTaskPartnerInvitationEmail(params: {
 }): Promise<void> {
   await sendEmail({
     to: params.to,
-    subject: `${params.inviterName} invited you to record on Neon Audio`,
+    subject: `${params.inviterName} invited you to record on Voice Atlas`,
     html: `
       <h2>You've been invited to participate in a recording task</h2>
-      <p><strong>${params.inviterName}</strong> wants you to join them for a <strong>"${params.taskName}"</strong> recording on Neon Audio.</p>
+      <p><strong>${params.inviterName}</strong> wants you to join them for a <strong>"${params.taskName}"</strong> recording on Voice Atlas.</p>
       <p>To get started, create your account using the link below:</p>
       <p><a href="${params.inviteLink}" style="display:inline-block;padding:12px 24px;background:#000;color:#fff;text-decoration:none;border-radius:6px;">Sign Up &amp; Join</a></p>
       <p style="color:#666;font-size:14px;">Or copy this link: ${params.inviteLink}</p>
     `,
-    text: `${params.inviterName} invited you to join them for a "${params.taskName}" recording on Neon Audio. Sign up here: ${params.inviteLink}`,
+    text: `${params.inviterName} invited you to join them for a "${params.taskName}" recording on Voice Atlas. Sign up here: ${params.inviteLink}`,
   });
 }
 
@@ -67,7 +67,7 @@ export async function sendRoomInvitationEmail(params: {
 
   await sendEmail({
     to: params.to,
-    subject: `${params.inviterName} invited you to a conversation on Neon Audio`,
+    subject: `${params.inviterName} invited you to a conversation on Voice Atlas`,
     html: `
       <h2>You've been invited to a conversation</h2>
       <p><strong>${params.inviterName}</strong> has invited you to join the room <strong>"${params.roomName}"</strong>.</p>
