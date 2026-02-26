@@ -5,9 +5,7 @@ import { z } from "zod";
 
 // Onboarding sample prompts — shared between client + server
 export const ONBOARDING_PROMPTS = [
-  { type: "speak" as const, text: 'Speak: "The quick brown fox jumps over the lazy dog near the bank of the river."', duration: 6 },
-  { type: "silence" as const, text: "Be quiet", duration: 3 },
-  { type: "speak" as const, text: 'Speak: "The quick brown fox jumps over the lazy dog near the bank of the river."', duration: 6 },
+  { type: "speak" as const, text: "Record yourself speaking naturally for about 30 seconds. Talk about anything \u2014 your day, a hobby, what you had for lunch.", duration: 30 },
 ];
 
 // Task type definitions — shared between client + server

@@ -876,6 +876,22 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/onboarding-samples/:userId/download", requireAdmin, async (req, res) => {
+    try {
+      const samples = await storage.getOnboardingSamplesByUser(req.params.userId as string);
+      if (samples.length === 0) {
+        return res.status(404).json({ error: "No onboarding samples found" });
+      }
+      const sample = samples[0];
+      const key = sample.wavS3Key || sample.s3Key;
+      const downloadUrl = await generateDownloadUrl(key);
+      res.json({ downloadUrl });
+    } catch (error) {
+      console.error("Onboarding sample download error:", error);
+      res.status(500).json({ error: "Failed to generate download URL" });
+    }
+  });
+
   app.patch("/api/admin/users/:id/approve", requireAdmin, async (req, res) => {
     try {
       const user = await storage.approveUser(req.params.id as string);

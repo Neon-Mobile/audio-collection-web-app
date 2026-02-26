@@ -42,6 +42,31 @@ interface TaskSession {
   status: string;
 }
 
+async function uploadToS3WithRetry(
+  url: string,
+  body: Blob,
+  contentType: string,
+  maxRetries = 3,
+): Promise<void> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method: "PUT",
+        body,
+        headers: { "Content-Type": contentType },
+      });
+      if (res.ok) return;
+      throw new Error(`S3 upload returned ${res.status}: ${res.statusText}`);
+    } catch (err: any) {
+      if (attempt === maxRetries) {
+        throw new Error(`Upload failed after ${maxRetries} attempts: ${err.message}`);
+      }
+      // Wait before retry: 1s, 2s, 4s
+      await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
+    }
+  }
+}
+
 function formatDuration(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
   const minutes = Math.floor(totalSeconds / 60);
@@ -96,6 +121,7 @@ export default function RoomPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [instructionsExpanded, setInstructionsExpanded] = useState(true);
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+  const [failedUploadBlobs, setFailedUploadBlobs] = useState<{ local: Blob; remote: Blob | null } | null>(null);
 
   const inviteMutation = useMutation({
     mutationFn: async ({ roomId, email }: { roomId: string; email: string }) => {
@@ -331,6 +357,7 @@ export default function RoomPage() {
   const uploadRecordings = useCallback(async (localBlob: Blob, remoteBlob: Blob | null) => {
     if (!roomId) return;
     setIsUploading(true);
+    setFailedUploadBlobs(null);
 
     try {
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -349,7 +376,7 @@ export default function RoomPage() {
         speakerId: "spk0",
       });
       const { uploadUrl: localUploadUrl, recordingId: localRecId } = await localUrlRes.json();
-      await fetch(localUploadUrl, { method: "PUT", body: localBlob, headers: { "Content-Type": "audio/webm" } });
+      await uploadToS3WithRetry(localUploadUrl, localBlob, "audio/webm");
 
       // Upload remote track if available
       let remoteRecId: string | null = null;
@@ -367,7 +394,7 @@ export default function RoomPage() {
         });
         const remoteData = await remoteUrlRes.json();
         remoteRecId = remoteData.recordingId;
-        await fetch(remoteData.uploadUrl, { method: "PUT", body: remoteBlob, headers: { "Content-Type": "audio/webm" } });
+        await uploadToS3WithRetry(remoteData.uploadUrl, remoteBlob, "audio/webm");
       }
 
       // Process local track first to get the folder number
@@ -386,9 +413,10 @@ export default function RoomPage() {
         setShowCompletionDialog(true);
       }
     } catch (err: any) {
+      setFailedUploadBlobs({ local: localBlob, remote: remoteBlob });
       toast({
         title: "Upload failed",
-        description: err.message || "Could not upload recordings",
+        description: err.message || "Could not upload recordings. You can retry without re-recording.",
         variant: "destructive",
       });
     } finally {
@@ -777,6 +805,17 @@ export default function RoomPage() {
               <Button variant="outline" size="sm" onClick={stopRecording} className="border-red-500 text-red-500">
                 <Circle className="mr-2 h-3 w-3 fill-red-500" />
                 Stop Recording
+              </Button>
+            ) : failedUploadBlobs ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => uploadRecordings(failedUploadBlobs.local, failedUploadBlobs.remote)}
+                disabled={isUploading}
+                className="border-orange-500 text-orange-500"
+              >
+                <Loader2 className={`mr-2 h-3 w-3 ${isUploading ? "animate-spin" : "hidden"}`} />
+                Retry Upload
               </Button>
             ) : (
               <Button

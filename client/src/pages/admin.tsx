@@ -120,6 +120,56 @@ function AudioPlayer({ recordingId }: { recordingId: string }) {
   );
 }
 
+function OnboardingSamplePlayer({ userId }: { userId: string }) {
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const handlePlay = async () => {
+    if (isPlaying && audioRef.current) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+      return;
+    }
+
+    if (audioUrl && audioRef.current) {
+      audioRef.current.play();
+      setIsPlaying(true);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await apiRequest("GET", `/api/admin/onboarding-samples/${userId}/download`);
+      const { downloadUrl } = await res.json();
+      setAudioUrl(downloadUrl);
+
+      const audio = new Audio(downloadUrl);
+      audioRef.current = audio;
+      audio.onended = () => setIsPlaying(false);
+      audio.play();
+      setIsPlaying(true);
+    } catch {
+      // silently fail
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={handlePlay} disabled={isLoading}>
+      {isLoading ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : isPlaying ? (
+        <Square className="h-3.5 w-3.5" />
+      ) : (
+        <Play className="h-3.5 w-3.5" />
+      )}
+    </Button>
+  );
+}
+
 function ReviewerStatusSelect({ session }: { session: EnrichedSession }) {
   const { toast } = useToast();
 
@@ -560,6 +610,7 @@ export default function Admin() {
                         <TableHead>Role</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Onboarding</TableHead>
+                        <TableHead>Sample</TableHead>
                         <TableHead>Joined</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -615,6 +666,13 @@ export default function Admin() {
                               </span>
                             ) : (
                               <span className="text-xs text-muted-foreground">Not started</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {u.samplesCompletedAt ? (
+                              <OnboardingSamplePlayer userId={u.id} />
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
                             )}
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm">
