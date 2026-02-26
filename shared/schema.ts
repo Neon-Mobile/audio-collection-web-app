@@ -246,6 +246,8 @@ export const taskSessions = pgTable("task_sessions", {
   partnerStatus: text("partner_status").notNull().default("none"),
   roomId: varchar("room_id").references(() => rooms.id),
   status: text("status").notNull().default("inviting_partner"),
+  paid: boolean("paid").notNull().default(false),
+  reviewerStatus: text("reviewer_status"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -952,6 +952,42 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/admin/task-sessions/:id/paid", requireAdmin, async (req, res) => {
+    try {
+      const session = await storage.getTaskSessionById(req.params.id as string);
+      if (!session) {
+        return res.status(404).json({ error: "Task session not found" });
+      }
+      const { paid } = req.body;
+      if (typeof paid !== "boolean") {
+        return res.status(400).json({ error: "paid must be a boolean" });
+      }
+      const updated = await storage.updateTaskSession(session.id, { paid });
+      res.json(updated);
+    } catch (error) {
+      console.error("Admin toggle paid error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/admin/task-sessions/:id/reviewer-status", requireAdmin, async (req, res) => {
+    try {
+      const session = await storage.getTaskSessionById(req.params.id as string);
+      if (!session) {
+        return res.status(404).json({ error: "Task session not found" });
+      }
+      const { reviewerStatus } = req.body;
+      if (reviewerStatus !== null && !["approved", "rejected", "unsure"].includes(reviewerStatus)) {
+        return res.status(400).json({ error: "reviewerStatus must be approved, rejected, unsure, or null" });
+      }
+      const updated = await storage.updateTaskSession(session.id, { reviewerStatus });
+      res.json(updated);
+    } catch (error) {
+      console.error("Admin set reviewer status error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.patch("/api/admin/task-sessions/:id/approve", requireAdmin, async (req, res) => {
     try {
       const session = await storage.getTaskSessionById(req.params.id as string);

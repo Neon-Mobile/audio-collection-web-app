@@ -1,6 +1,6 @@
 import { type User, type Room, type Recording, type OnboardingSample, type ReferralCode, type RoomInvitation, type Notification, type TaskSession, users, rooms, recordings, onboardingSamples, referralCodes, roomInvitations, notifications, taskSessions } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, isNotNull, sql } from "drizzle-orm";
+import { eq, desc, and, isNotNull, inArray, sql } from "drizzle-orm";
 import * as crypto from "node:crypto";
 
 export interface IStorage {
@@ -68,7 +68,8 @@ export interface IStorage {
   getTaskSessionsByPartner(partnerId: string): Promise<TaskSession[]>;
   getTaskSessionsByPartnerEmail(email: string): Promise<TaskSession[]>;
   updateTaskSessionsForApprovedPartner(partnerId: string): Promise<void>;
-  getAllTaskSessionsWithUsers(): Promise<(TaskSession & { userEmail: string })[]>;
+  getAllTaskSessionsWithUsers(): Promise<(TaskSession & { userEmail: string; recordings: Recording[] })[]>;
+  getRecordingsByRoomIds(roomIds: string[]): Promise<Recording[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -349,7 +350,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(taskSessions.partnerId, partnerId), eq(taskSessions.partnerStatus, "registered")));
   }
 
-  async getAllTaskSessionsWithUsers(): Promise<(TaskSession & { userEmail: string })[]> {
+  async getAllTaskSessionsWithUsers(): Promise<(TaskSession & { userEmail: string; recordings: Recording[] })[]> {
     const rows = await db
       .select({
         id: taskSessions.id,
@@ -360,6 +361,8 @@ export class DatabaseStorage implements IStorage {
         partnerStatus: taskSessions.partnerStatus,
         roomId: taskSessions.roomId,
         status: taskSessions.status,
+        paid: taskSessions.paid,
+        reviewerStatus: taskSessions.reviewerStatus,
         createdAt: taskSessions.createdAt,
         updatedAt: taskSessions.updatedAt,
         userEmail: users.username,
@@ -367,7 +370,32 @@ export class DatabaseStorage implements IStorage {
       .from(taskSessions)
       .innerJoin(users, eq(taskSessions.userId, users.id))
       .orderBy(desc(taskSessions.updatedAt));
-    return rows;
+
+    // Bulk-fetch recordings for all sessions that have a roomId
+    const roomIds = rows.map((r) => r.roomId).filter((id): id is string => !!id);
+    const allRecordings = roomIds.length > 0 ? await this.getRecordingsByRoomIds(roomIds) : [];
+
+    // Group recordings by roomId
+    const recordingsByRoom = new Map<string, Recording[]>();
+    for (const rec of allRecordings) {
+      const arr = recordingsByRoom.get(rec.roomId) || [];
+      arr.push(rec);
+      recordingsByRoom.set(rec.roomId, arr);
+    }
+
+    return rows.map((row) => ({
+      ...row,
+      recordings: row.roomId ? recordingsByRoom.get(row.roomId) || [] : [],
+    }));
+  }
+
+  async getRecordingsByRoomIds(roomIds: string[]): Promise<Recording[]> {
+    if (roomIds.length === 0) return [];
+    return db
+      .select()
+      .from(recordings)
+      .where(inArray(recordings.roomId, roomIds))
+      .orderBy(desc(recordings.createdAt));
   }
 }
 
