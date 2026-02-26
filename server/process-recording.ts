@@ -102,27 +102,40 @@ export async function processRecording(recordingId: string, overrideFolderNumber
     return recording;
   }
 
-  const folderNumber = overrideFolderNumber || await getNextFolderNumber();
+  // Check if another recording from the same room was already processed — reuse its folder
+  const siblingRecordings = await storage.getRecordingsByRoom(recording.roomId);
+  const sibling = siblingRecordings.find(r => r.id !== recordingId && r.processedFolder);
 
-  // Build folder name with both participants' short keys
-  let folderName = folderNumber;
-  try {
-    const sessions = await storage.getTaskSessionsByRoom(recording.roomId);
-    const session = sessions[0];
-    if (session) {
-      const userIds = [session.userId, session.partnerId].filter(Boolean) as string[];
-      const shortKeys: string[] = [];
-      for (const uid of userIds) {
-        const u = await storage.getUserById(uid);
-        if (u?.shortKey) shortKeys.push(u.shortKey);
+  let folderName: string;
+  let folderNumber: string;
+
+  if (sibling?.processedFolder) {
+    folderName = sibling.processedFolder;
+    folderNumber = folderName.match(/^(\d+)/)?.[1] ?? folderName;
+    console.log(`Reusing folder from sibling recording: ${folderName}`);
+  } else {
+    folderNumber = overrideFolderNumber || await getNextFolderNumber();
+
+    // Build folder name with both participants' short keys
+    folderName = folderNumber;
+    try {
+      const sessions = await storage.getTaskSessionsByRoom(recording.roomId);
+      const session = sessions[0];
+      if (session) {
+        const userIds = [session.userId, session.partnerId].filter(Boolean) as string[];
+        const shortKeys: string[] = [];
+        for (const uid of userIds) {
+          const u = await storage.getUserById(uid);
+          if (u?.shortKey) shortKeys.push(u.shortKey);
+        }
+        if (shortKeys.length > 0) {
+          shortKeys.sort();
+          folderName = `${folderNumber}_${shortKeys.join("_")}`;
+        }
       }
-      if (shortKeys.length > 0) {
-        shortKeys.sort();
-        folderName = `${folderNumber}_${shortKeys.join("_")}`;
-      }
+    } catch (err) {
+      console.warn("Could not resolve participant keys for folder name:", err);
     }
-  } catch (err) {
-    console.warn("Could not resolve participant keys for folder name:", err);
   }
 
   console.log(`Processing recording ${recordingId} → processed/${folderName}/`);

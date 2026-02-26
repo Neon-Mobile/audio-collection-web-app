@@ -176,9 +176,11 @@ export class DatabaseStorage implements IStorage {
   async getMaxProcessedFolderNumber(): Promise<number> {
     const result = await db.execute(sql`
       SELECT COALESCE(MAX(val), 0)::int AS max_folder FROM (
-        SELECT processed_folder::int AS val FROM recordings WHERE processed_folder IS NOT NULL
+        SELECT (regexp_match(processed_folder, '^\d+'))[1]::int AS val
+          FROM recordings WHERE processed_folder IS NOT NULL
         UNION ALL
-        SELECT processed_folder::int AS val FROM onboarding_samples WHERE processed_folder IS NOT NULL
+        SELECT (regexp_match(processed_folder, '^\d+'))[1]::int AS val
+          FROM onboarding_samples WHERE processed_folder IS NOT NULL
       ) t
     `);
     return (result.rows[0] as any).max_folder;
