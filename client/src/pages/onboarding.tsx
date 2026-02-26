@@ -13,6 +13,7 @@ import SampleRecorder from "@/components/sample-recorder";
 export default function Onboarding() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [gender, setGender] = useState("");
   const [age, setAge] = useState("");
   const [primaryLanguage, setPrimaryLanguage] = useState("");
@@ -93,6 +94,7 @@ export default function Onboarding() {
       await submitOnboarding({
         firstName,
         lastName,
+        phoneNumber,
         gender,
         age: parseInt(age, 10),
         primaryLanguage,
@@ -166,6 +168,19 @@ export default function Onboarding() {
                     className="h-11"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber">Phone Number</Label>
+                <Input
+                  id="phoneNumber"
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="e.g. +1 555-123-4567"
+                  required
+                  className="h-11"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">

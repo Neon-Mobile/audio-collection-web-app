@@ -266,6 +266,7 @@ export const loginSchema = z.object({
 export const onboardingSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
+  phoneNumber: z.string().min(1),
   gender: z.enum(["male", "female", "non-binary", "prefer-not-to-say"]),
   age: z.number().int().min(13).max(120),
   primaryLanguage: z.string().min(1),

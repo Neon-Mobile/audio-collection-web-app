@@ -56,6 +56,7 @@ export function useAuth() {
     mutationFn: async (data: {
       firstName: string;
       lastName: string;
+      phoneNumber: string;
       gender: string;
       age: number;
       primaryLanguage: string;
