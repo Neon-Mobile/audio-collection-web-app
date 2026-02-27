@@ -11,6 +11,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, Check, X, Download, Shield, ShieldOff, Play, Square, Search, ArrowUpDown, ChevronDown, ChevronUp, Copy } from "lucide-react";
 import { TASK_TYPES } from "@shared/schema";
@@ -330,6 +340,30 @@ export default function Admin() {
       toast({ title: "User approved" });
     },
   });
+
+  const rejectRetryMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest("PATCH", `/api/admin/users/${userId}/reject-retry`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: "User reset", description: "They will need to re-record their onboarding sample." });
+    },
+  });
+
+  const rejectBlockMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest("PATCH", `/api/admin/users/${userId}/reject-block`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: "User blocked", description: "Their email has been permanently blocked." });
+    },
+  });
+
+  const [blockConfirmUserId, setBlockConfirmUserId] = useState<string | null>(null);
 
   const roleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
@@ -690,6 +724,29 @@ export default function Admin() {
                                 Approve
                               </Button>
                             )}
+                            {!u.approved && u.samplesCompletedAt && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => rejectRetryMutation.mutate(u.id)}
+                                disabled={rejectRetryMutation.isPending}
+                                className="text-orange-600 hover:text-orange-700"
+                              >
+                                <X className="mr-1 h-4 w-4" />
+                                Retry
+                              </Button>
+                            )}
+                            {!u.approved && u.id !== user?.id && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setBlockConfirmUserId(u.id)}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <X className="mr-1 h-4 w-4" />
+                                Block
+                              </Button>
+                            )}
                             {u.id !== user?.id && (
                               <Button
                                 size="sm"
@@ -718,6 +775,32 @@ export default function Admin() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Block Confirmation Dialog */}
+          <AlertDialog open={!!blockConfirmUserId} onOpenChange={(open) => !open && setBlockConfirmUserId(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Block this user permanently?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will delete their account and permanently block their email from registering again. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => {
+                    if (blockConfirmUserId) {
+                      rejectBlockMutation.mutate(blockConfirmUserId);
+                      setBlockConfirmUserId(null);
+                    }
+                  }}
+                >
+                  Block Permanently
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {/* Rooms Tab */}
           <TabsContent value="rooms">

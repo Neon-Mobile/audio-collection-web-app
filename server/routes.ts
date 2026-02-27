@@ -24,6 +24,11 @@ export async function registerRoutes(
         return res.status(400).json({ error: parsed.error.issues[0].message });
       }
 
+      const blocked = await storage.isEmailBlocked(parsed.data.username);
+      if (blocked) {
+        return res.status(403).json({ error: "This email has been blocked. Contact support if you believe this is an error." });
+      }
+
       const existing = await storage.getUserByUsername(parsed.data.username);
       if (existing) {
         return res.status(409).json({ error: "Username already taken" });
@@ -937,6 +942,48 @@ export async function registerRoutes(
       });
     } catch (error) {
       console.error("Admin change role error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id/reject-retry", requireAdmin, async (req, res) => {
+    try {
+      const userId = req.params.id as string;
+      const target = await storage.getUserById(userId);
+      if (!target) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      // Delete their onboarding samples and reset samplesCompletedAt
+      await storage.deleteOnboardingSamplesByUser(userId);
+      const user = await storage.updateUser(userId, { samplesCompletedAt: null });
+      res.json({
+        id: user.id,
+        username: user.username,
+        samplesCompletedAt: user.samplesCompletedAt,
+      });
+    } catch (error) {
+      console.error("Admin reject-retry error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id/reject-block", requireAdmin, async (req, res) => {
+    try {
+      const userId = req.params.id as string;
+      const target = await storage.getUserById(userId);
+      if (!target) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      // Block the email and delete the user
+      await storage.createBlockedEmail({
+        email: target.username,
+        blockedBy: req.user!.id,
+        reason: req.body?.reason || "Blocked by admin",
+      });
+      await storage.deleteUser(userId);
+      res.json({ blocked: true, email: target.username });
+    } catch (error) {
+      console.error("Admin reject-block error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

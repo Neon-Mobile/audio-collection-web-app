@@ -269,6 +269,15 @@ export const taskSessions = pgTable("task_sessions", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Blocked emails table
+export const blockedEmails = pgTable("blocked_emails", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull().unique(),
+  blockedBy: varchar("blocked_by").notNull().references(() => users.id),
+  reason: text("reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Zod schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -320,3 +329,4 @@ export type ReferralCode = typeof referralCodes.$inferSelect;
 export type RoomInvitation = typeof roomInvitations.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type TaskSession = typeof taskSessions.$inferSelect;
+export type BlockedEmail = typeof blockedEmails.$inferSelect;

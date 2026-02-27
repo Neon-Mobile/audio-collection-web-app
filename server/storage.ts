@@ -1,4 +1,4 @@
-import { type User, type Room, type Recording, type OnboardingSample, type ReferralCode, type RoomInvitation, type Notification, type TaskSession, users, rooms, recordings, onboardingSamples, referralCodes, roomInvitations, notifications, taskSessions } from "@shared/schema";
+import { type User, type Room, type Recording, type OnboardingSample, type ReferralCode, type RoomInvitation, type Notification, type TaskSession, users, rooms, recordings, onboardingSamples, referralCodes, roomInvitations, notifications, taskSessions, blockedEmails } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, isNotNull, inArray, sql } from "drizzle-orm";
 import * as crypto from "node:crypto";
@@ -70,6 +70,12 @@ export interface IStorage {
   updateTaskSessionsForApprovedPartner(partnerId: string): Promise<void>;
   getAllTaskSessionsWithUsers(): Promise<(TaskSession & { userEmail: string; recordings: Recording[] })[]>;
   getRecordingsByRoomIds(roomIds: string[]): Promise<Recording[]>;
+
+  // Blocked Emails
+  createBlockedEmail(data: { email: string; blockedBy: string; reason?: string }): Promise<void>;
+  isEmailBlocked(email: string): Promise<boolean>;
+  deleteOnboardingSamplesByUser(userId: string): Promise<void>;
+  deleteUser(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -399,6 +405,28 @@ export class DatabaseStorage implements IStorage {
       .from(recordings)
       .where(inArray(recordings.roomId, roomIds))
       .orderBy(desc(recordings.createdAt));
+  }
+
+  // Blocked Emails
+  async createBlockedEmail(data: { email: string; blockedBy: string; reason?: string }): Promise<void> {
+    await db.insert(blockedEmails).values(data).onConflictDoNothing();
+  }
+
+  async isEmailBlocked(email: string): Promise<boolean> {
+    const [result] = await db.select().from(blockedEmails).where(eq(blockedEmails.email, email));
+    return !!result;
+  }
+
+  async deleteOnboardingSamplesByUser(userId: string): Promise<void> {
+    await db.delete(onboardingSamples).where(eq(onboardingSamples.userId, userId));
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    // Delete related data first (foreign key constraints)
+    await db.delete(onboardingSamples).where(eq(onboardingSamples.userId, id));
+    await db.delete(notifications).where(eq(notifications.userId, id));
+    await db.delete(referralCodes).where(eq(referralCodes.userId, id));
+    await db.delete(users).where(eq(users.id, id));
   }
 }
 
