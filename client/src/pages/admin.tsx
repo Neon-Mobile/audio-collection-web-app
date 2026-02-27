@@ -640,6 +640,7 @@ export default function Admin() {
                       <TableRow>
                         <TableHead>Username</TableHead>
                         <TableHead>Name</TableHead>
+                        <TableHead>Referral</TableHead>
                         <TableHead>Key</TableHead>
                         <TableHead>Role</TableHead>
                         <TableHead>Status</TableHead>
@@ -660,6 +661,9 @@ export default function Admin() {
                                 ? `${data.firstName} ${data.lastName || ""}`.trim()
                                 : <span className="text-muted-foreground">-</span>;
                             })()}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {(u.onboardingData as Record<string, string> | null)?.referralSource || <span className="text-muted-foreground">-</span>}
                           </TableCell>
                           <TableCell>
                             {u.shortKey ? (
