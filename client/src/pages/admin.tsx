@@ -566,7 +566,7 @@ export default function Admin() {
                                 {session.partnerEmail || "-"}
                               </TableCell>
                               <TableCell>
-                                <AudioCell recordings={session.recordings} onDownload={downloadRecording} />
+                                <AudioCell recordings={session.recordings.filter((r) => r.recordingType === "local")} onDownload={downloadRecording} />
                               </TableCell>
                               <TableCell>
                                 <ReviewerStatusSelect session={session} />
