@@ -269,7 +269,7 @@ export default function Onboarding() {
                   id="referralSource"
                   value={referralSource}
                   onChange={(e) => setReferralSource(e.target.value)}
-                  placeholder="e.g. Friend, social media, etc."
+                  placeholder="e.g. HomeFromCollege, SideShift, Previous projects, etc."
                   className="h-11"
                 />
               </div>
