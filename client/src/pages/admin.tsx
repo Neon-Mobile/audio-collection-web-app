@@ -693,8 +693,10 @@ export default function Admin() {
                           <TableCell>
                             {u.approved ? (
                               <Badge className="bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:text-green-300 border-0">Approved</Badge>
+                            ) : u.samplesCompletedAt ? (
+                              <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300 border-0">Pending Review</Badge>
                             ) : (
-                              <Badge variant="outline">Pending</Badge>
+                              <Badge variant="outline">Pending Sample</Badge>
                             )}
                           </TableCell>
                           <TableCell>
