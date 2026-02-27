@@ -12,7 +12,7 @@ export const ONBOARDING_PROMPTS = [
 export const TASK_TYPES = [
   {
     id: "whispered-conversation",
-    name: "Soft Spoken / Whispered Conversation",
+    name: "Whispered Conversation",
     description: "Have a quiet, whispered conversation with your partner.",
     hourlyRate: 30,
     availableUntil: "2026-04-01",
@@ -42,6 +42,7 @@ export const TASK_TYPES = [
   },
   {
     id: "emotion-joy",
+    archived: true,
     name: "Emotional Conversation - Joy / Excitement",
     description: "Have a joyful, happy conversation with your partner.",
     hourlyRate: 20,
@@ -123,6 +124,7 @@ export const TASK_TYPES = [
   },
   {
     id: "emotion-confusion",
+    archived: true,
     name: "Emotional Conversation - Confusion",
     description: "Have a confused, puzzled conversation with your partner.",
     hourlyRate: 20,
