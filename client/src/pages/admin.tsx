@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuthContext } from "@/lib/auth-context";
@@ -80,11 +80,27 @@ function AudioCell({ recordings, onDownload }: { recordings: Recording[]; onDown
   );
 }
 
+function formatTime(seconds: number) {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 function AudioPlayer({ recordingId }: { recordingId: string }) {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const sliderRef = useRef<HTMLInputElement | null>(null);
+
+  const setupListeners = useCallback((audio: HTMLAudioElement) => {
+    audio.ontimeupdate = () => setCurrentTime(audio.currentTime);
+    audio.onloadedmetadata = () => setDuration(audio.duration);
+    audio.ondurationchange = () => setDuration(audio.duration);
+    audio.onended = () => setIsPlaying(false);
+  }, []);
 
   const handlePlay = async () => {
     if (isPlaying && audioRef.current) {
@@ -107,7 +123,7 @@ function AudioPlayer({ recordingId }: { recordingId: string }) {
 
       const audio = new Audio(downloadUrl);
       audioRef.current = audio;
-      audio.onended = () => setIsPlaying(false);
+      setupListeners(audio);
       audio.play();
       setIsPlaying(true);
     } catch {
@@ -117,16 +133,56 @@ function AudioPlayer({ recordingId }: { recordingId: string }) {
     }
   };
 
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const time = parseFloat(e.target.value);
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+      setCurrentTime(time);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
   return (
-    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={handlePlay} disabled={isLoading}>
-      {isLoading ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-      ) : isPlaying ? (
-        <Square className="h-3.5 w-3.5" />
-      ) : (
-        <Play className="h-3.5 w-3.5" />
+    <div className="flex items-center gap-1.5 min-w-[160px]">
+      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 shrink-0" onClick={handlePlay} disabled={isLoading}>
+        {isLoading ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : isPlaying ? (
+          <Square className="h-3 w-3" />
+        ) : (
+          <Play className="h-3 w-3" />
+        )}
+      </Button>
+      <div className="relative flex-1 h-1 bg-muted rounded-full overflow-hidden cursor-pointer" style={{ minWidth: 80 }}>
+        <div className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all" style={{ width: `${progress}%` }} />
+        <input
+          ref={sliderRef}
+          type="range"
+          min={0}
+          max={duration || 0}
+          step={0.1}
+          value={currentTime}
+          onChange={handleSeek}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          disabled={!audioUrl}
+        />
+      </div>
+      {duration > 0 && (
+        <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+          {formatTime(currentTime)}/{formatTime(duration)}
+        </span>
       )}
-    </Button>
+    </div>
   );
 }
 
@@ -543,6 +599,7 @@ export default function Admin() {
                           <TableHead>Task</TableHead>
                           <TableHead>User</TableHead>
                           <TableHead>Partner</TableHead>
+                          <TableHead>Duration</TableHead>
                           <TableHead>Audio</TableHead>
                           <TableHead>Reviewer</TableHead>
                           <TableHead className="text-center">Paid</TableHead>
@@ -564,6 +621,17 @@ export default function Admin() {
                               </TableCell>
                               <TableCell className="text-muted-foreground text-sm">
                                 {session.partnerEmail || "-"}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                                {(() => {
+                                  const localRecs = session.recordings.filter((r) => r.recordingType === "local");
+                                  const maxDuration = Math.max(0, ...localRecs.map((r) => r.duration || 0));
+                                  if (maxDuration === 0) return "-";
+                                  const totalSec = Math.round(maxDuration / 1000);
+                                  const m = Math.floor(totalSec / 60);
+                                  const s = totalSec % 60;
+                                  return `${m}:${s.toString().padStart(2, "0")}`;
+                                })()}
                               </TableCell>
                               <TableCell>
                                 <AudioCell recordings={session.recordings.filter((r) => r.recordingType === "local")} onDownload={downloadRecording} />
