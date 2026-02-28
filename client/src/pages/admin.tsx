@@ -578,7 +578,7 @@ export default function Admin() {
                                 {getStatusBadge(session.status)}
                               </TableCell>
                               <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                                {new Date(session.updatedAt).toLocaleDateString()}
+                                {new Date(session.updatedAt).toLocaleString([], { month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" })}
                               </TableCell>
                               <TableCell className="text-right">
                                 {session.status === "pending_review" && (
