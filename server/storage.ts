@@ -329,7 +329,7 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .select()
       .from(taskSessions)
-      .where(and(eq(taskSessions.userId, userId), eq(taskSessions.taskType, taskType), sql`${taskSessions.status} != 'completed'`))
+      .where(and(eq(taskSessions.userId, userId), eq(taskSessions.taskType, taskType), sql`${taskSessions.status} NOT IN ('completed', 'pending_review')`))
       .orderBy(desc(taskSessions.createdAt))
       .limit(1);
     return result;
