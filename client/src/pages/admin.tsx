@@ -556,8 +556,8 @@ export default function Admin() {
                           const taskDef = TASK_TYPES.find((t) => t.id === session.taskType);
                           return (
                             <TableRow key={session.id}>
-                              <TableCell className="font-medium max-w-[180px]">
-                                <span className="truncate block">{taskDef?.name || session.taskType}</span>
+                              <TableCell className="font-medium">
+                                {taskDef?.name || session.taskType}
                               </TableCell>
                               <TableCell className="text-muted-foreground text-sm">
                                 {session.userEmail}
