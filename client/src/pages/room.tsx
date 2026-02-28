@@ -249,11 +249,11 @@ export default function RoomPage() {
             stereo: false,
           },
           userMediaAudioConstraints: {
-            sampleRate: { ideal: 48000 },
-            channelCount: { ideal: 1 },
-            echoCancellation: true,
-            noiseSuppression: { ideal: false },
-            autoGainControl: { ideal: false },
+            sampleRate: 48000,
+            channelCount: 1,
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
           },
         },
       });
@@ -462,11 +462,11 @@ export default function RoomPage() {
       // Start local mic recorder
       const localStream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          sampleRate: { ideal: 48000 },
-          channelCount: { ideal: 1 },
-          echoCancellation: true,
-          noiseSuppression: { ideal: false },
-          autoGainControl: { ideal: false },
+          sampleRate: 48000,
+          channelCount: 1,
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
         },
       });
       localStreamRef.current = localStream;
