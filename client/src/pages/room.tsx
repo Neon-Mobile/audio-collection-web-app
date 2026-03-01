@@ -111,6 +111,7 @@ export default function RoomPage() {
   const finalDurationRef = useRef<number>(0);
   const recordingDurationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteRecordingStreamRef = useRef<MediaStream | null>(null);
 
   // Track how many recorders have stopped (to wait for both before uploading)
   const stoppedCountRef = useRef(0);
@@ -206,6 +207,7 @@ export default function RoomPage() {
   });
 
   // Handle remote audio track started — create <audio> element to play it
+  // Also swap the track in the remote recording stream if recording is active
   const handleTrackStarted = useCallback((event: any) => {
     if (!event?.participant || event.participant.local) return;
     if (event.track?.kind !== "audio") return;
@@ -221,6 +223,16 @@ export default function RoomPage() {
     }
     audioEl.srcObject = new MediaStream([track]);
     console.log(`Playing remote audio for participant ${participantId}`);
+
+    // If we're recording, swap the track in the remote recording stream
+    // so the MediaRecorder keeps getting data from the new track
+    const recordingStream = remoteRecordingStreamRef.current;
+    if (recordingStream) {
+      const oldTracks = recordingStream.getAudioTracks();
+      oldTracks.forEach((t) => recordingStream.removeTrack(t));
+      recordingStream.addTrack(track);
+      console.log(`Swapped remote recording track for participant ${participantId}`);
+    }
 
     setHasRemoteParticipant(true);
   }, []);
@@ -552,6 +564,7 @@ export default function RoomPage() {
       // Start remote track recorder if available
       if (hasRemote && remoteTrack) {
         const remoteStream = new MediaStream([remoteTrack]);
+        remoteRecordingStreamRef.current = remoteStream;
         const remoteRecorder = new MediaRecorder(remoteStream, { mimeType });
         remoteChunksRef.current = [];
 
@@ -614,6 +627,7 @@ export default function RoomPage() {
       remoteRecorderRef.current.stop();
     }
     remoteRecorderRef.current = null;
+    remoteRecordingStreamRef.current = null;
 
     // Notify other participants
     if (callObjectRef.current) {
