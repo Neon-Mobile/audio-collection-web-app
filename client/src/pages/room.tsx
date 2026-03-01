@@ -90,32 +90,26 @@ export default function RoomPage() {
   const joinTimeRef = useRef<number | null>(null);
   const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Dual-track recording state
+  // Recording state
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
-  const [isRemoteRecording, setIsRemoteRecording] = useState(false);
   const [hasRemoteParticipant, setHasRemoteParticipant] = useState(false);
 
-  // Local track recorder
+  // Local mic recorder (used by both creator and partner — each records their own mic)
   const localRecorderRef = useRef<MediaRecorder | null>(null);
   const localChunksRef = useRef<Blob[]>([]);
   const localBlobRef = useRef<Blob | null>(null);
-
-  // Remote track recorder
-  const remoteRecorderRef = useRef<MediaRecorder | null>(null);
-  const remoteChunksRef = useRef<Blob[]>([]);
-  const remoteBlobRef = useRef<Blob | null>(null);
 
   const recordingStartRef = useRef<number | null>(null);
   const finalDurationRef = useRef<number>(0);
   const recordingDurationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
-  const remoteRecordingStreamRef = useRef<MediaStream | null>(null);
 
-  // Track how many recorders have stopped (to wait for both before uploading)
-  const stoppedCountRef = useRef(0);
-  const expectedStopsRef = useRef(0);
+  // Partner's recording ID (creator receives this after partner uploads their track)
+  const partnerRecordingIdRef = useRef<string | null>(null);
+  // Ref for app-message handler to avoid stale closures
+  const messageHandlerRef = useRef<(msg: any) => void>(() => {});
 
   // Audio elements for playing remote participants' audio
   const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
@@ -123,7 +117,7 @@ export default function RoomPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [instructionsExpanded, setInstructionsExpanded] = useState(true);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
-  const [failedUploadBlobs, setFailedUploadBlobs] = useState<{ local: Blob; remote: Blob | null } | null>(null);
+  const [failedUploadBlobs, setFailedUploadBlobs] = useState<{ local: Blob } | null>(null);
   const hasRecordedRef = useRef(false);
   const [blobsReady, setBlobsReady] = useState(false);
 
@@ -207,7 +201,6 @@ export default function RoomPage() {
   });
 
   // Handle remote audio track started — create <audio> element to play it
-  // Also swap the track in the remote recording stream if recording is active
   const handleTrackStarted = useCallback((event: any) => {
     if (!event?.participant || event.participant.local) return;
     if (event.track?.kind !== "audio") return;
@@ -223,16 +216,6 @@ export default function RoomPage() {
     }
     audioEl.srcObject = new MediaStream([track]);
     console.log(`Playing remote audio for participant ${participantId}`);
-
-    // If we're recording, swap the track in the remote recording stream
-    // so the MediaRecorder keeps getting data from the new track
-    const recordingStream = remoteRecordingStreamRef.current;
-    if (recordingStream) {
-      const oldTracks = recordingStream.getAudioTracks();
-      oldTracks.forEach((t) => recordingStream.removeTrack(t));
-      recordingStream.addTrack(track);
-      console.log(`Swapped remote recording track for participant ${participantId}`);
-    }
 
     setHasRemoteParticipant(true);
   }, []);
@@ -352,10 +335,9 @@ export default function RoomPage() {
       callObject.on("recording-stopped", () => setIsCloudRecording(false));
       callObject.on("recording-error", () => setIsCloudRecording(false));
 
-      // Listen for recording state messages from other participants
+      // Handle messages from other participants (recording commands, upload notifications)
       callObject.on("app-message", (msg: any) => {
-        if (msg?.data?.type === "recording-started") setIsRemoteRecording(true);
-        if (msg?.data?.type === "recording-stopped") setIsRemoteRecording(false);
+        messageHandlerRef.current(msg);
       });
 
       await callObject.join({ url: roomUrl, token });
@@ -369,9 +351,6 @@ export default function RoomPage() {
     setCallState("leaving");
     if (localRecorderRef.current && localRecorderRef.current.state !== "inactive") {
       localRecorderRef.current.stop();
-    }
-    if (remoteRecorderRef.current && remoteRecorderRef.current.state !== "inactive") {
-      remoteRecorderRef.current.stop();
     }
     if (callObjectRef.current) {
       await callObjectRef.current.leave();
@@ -400,7 +379,6 @@ export default function RoomPage() {
     setParticipants([]);
     setIsCloudRecording(false);
     setIsRecording(false);
-    setIsRemoteRecording(false);
   }, []);
 
   const toggleMic = useCallback(() => {
@@ -411,8 +389,8 @@ export default function RoomPage() {
     }
   }, [isMicMuted]);
 
-  // Upload both recordings to the same processed folder
-  const uploadRecordings = useCallback(async (localBlob: Blob, remoteBlob: Blob | null) => {
+  // Upload creator's recording and process both tracks
+  const uploadRecordings = useCallback(async (localBlob: Blob) => {
     if (!roomId) return;
     setIsUploading(true);
     setFailedUploadBlobs(null);
@@ -421,7 +399,7 @@ export default function RoomPage() {
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const duration = finalDurationRef.current;
 
-      // Upload local track
+      // Upload creator's local track
       const localUrlRes = await apiRequest("POST", "/api/recordings/upload-url", {
         roomId,
         fileName: `local-${timestamp}.webm`,
@@ -436,42 +414,23 @@ export default function RoomPage() {
       const { uploadUrl: localUploadUrl, recordingId: localRecId } = await localUrlRes.json();
       await uploadToS3WithRetry(localUploadUrl, localBlob, "audio/webm");
 
-      // Upload remote track if available
-      let remoteRecId: string | null = null;
-      if (remoteBlob && remoteBlob.size > 0) {
-        const remoteUrlRes = await apiRequest("POST", "/api/recordings/upload-url", {
-          roomId,
-          fileName: `remote-${timestamp}.webm`,
-          duration,
-          fileSize: remoteBlob.size,
-          format: "webm",
-          sampleRate: 48000,
-          channels: 1,
-          recordingType: "remote",
-          speakerId: "spk1",
-        });
-        const remoteData = await remoteUrlRes.json();
-        remoteRecId = remoteData.recordingId;
-        await uploadToS3WithRetry(remoteData.uploadUrl, remoteBlob, "audio/webm");
-      }
-
-      // Process local track first to get the folder number
-      toast({ title: "Recordings uploaded", description: "Processing audio..." });
+      // Process creator's track (creates the folder number)
+      toast({ title: "Recording uploaded", description: "Processing audio..." });
       const processRes = await apiRequest("POST", `/api/recordings/${localRecId}/process`);
       const { processedFolder } = await processRes.json();
 
-      // Process remote track into the same folder
-      if (remoteRecId) {
-        await apiRequest("POST", `/api/recordings/${remoteRecId}/process`, { folderNumber: processedFolder });
+      // Process partner's track into the same folder (if partner uploaded)
+      const partnerRecId = partnerRecordingIdRef.current;
+      if (partnerRecId) {
+        await apiRequest("POST", `/api/recordings/${partnerRecId}/process`, { folderNumber: processedFolder });
       }
 
-      toast({ title: "Recordings processed", description: `Both tracks saved to folder ${processedFolder}.` });
+      toast({ title: "Recordings processed", description: `Tracks saved to folder ${processedFolder}.` });
 
       // Auto-complete task and leave call
       if (taskSession) {
         completeTaskMutation.mutate(taskSession.id);
       } else {
-        // No task session — just leave call
         if (callObjectRef.current) {
           await callObjectRef.current.leave();
           callObjectRef.current.destroy();
@@ -481,7 +440,7 @@ export default function RoomPage() {
         setCallState("idle");
       }
     } catch (err: any) {
-      setFailedUploadBlobs({ local: localBlob, remote: remoteBlob });
+      setFailedUploadBlobs({ local: localBlob });
       toast({
         title: "Upload failed",
         description: err.message || "Could not upload recordings. You can retry without re-recording.",
@@ -492,48 +451,23 @@ export default function RoomPage() {
     }
   }, [roomId, taskSession, toast]);
 
-  // Called when both recorders have stopped and blobs are ready
-  const onBothRecordersStopped = useCallback(() => {
-    // Don't upload yet — wait for user to click "End Call & Submit"
-    setBlobsReady(true);
-  }, []);
-
-  // Triggered by "End Call & Submit" button
+  // Triggered by "End Call & Submit" button (creator only)
   const submitAndEndCall = useCallback(() => {
     const localBlob = localBlobRef.current;
-    const remoteBlob = remoteBlobRef.current;
     localBlobRef.current = null;
-    remoteBlobRef.current = null;
 
     if (localBlob && localBlob.size > 0) {
-      uploadRecordings(localBlob, remoteBlob);
+      uploadRecordings(localBlob);
     }
   }, [uploadRecordings]);
 
-  const startRecording = useCallback(async () => {
-    if (!callObjectRef.current) return;
-
+  // Helper: start recording own local mic (used by both creator and partner)
+  const startLocalMicRecording = useCallback(async (): Promise<boolean> => {
     const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
       ? "audio/webm;codecs=opus"
       : "audio/webm";
 
-    // Reset state
-    localBlobRef.current = null;
-    remoteBlobRef.current = null;
-    stoppedCountRef.current = 0;
-
-    // Find remote participant's audio track
-    const dailyParticipants = callObjectRef.current.participants();
-    const remoteParticipant = Object.values(dailyParticipants).find(
-      (p: DailyParticipant) => !p.local
-    ) as DailyParticipant | undefined;
-    const remoteTrack = remoteParticipant?.tracks?.audio?.persistentTrack;
-
-    const hasRemote = !!remoteTrack;
-    expectedStopsRef.current = hasRemote ? 2 : 1;
-
     try {
-      // Start local mic recorder
       const localStream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: 48000,
@@ -554,41 +488,11 @@ export default function RoomPage() {
       localRecorder.onstop = () => {
         localStream.getTracks().forEach((t) => t.stop());
         localBlobRef.current = new Blob(localChunksRef.current, { type: mimeType });
-        stoppedCountRef.current++;
-        if (stoppedCountRef.current >= expectedStopsRef.current) {
-          onBothRecordersStopped();
-        }
       };
       localRecorderRef.current = localRecorder;
-
-      // Start remote track recorder if available
-      if (hasRemote && remoteTrack) {
-        const remoteStream = new MediaStream([remoteTrack]);
-        remoteRecordingStreamRef.current = remoteStream;
-        const remoteRecorder = new MediaRecorder(remoteStream, { mimeType });
-        remoteChunksRef.current = [];
-
-        remoteRecorder.ondataavailable = (e) => {
-          if (e.data.size > 0) remoteChunksRef.current.push(e.data);
-        };
-        remoteRecorder.onstop = () => {
-          remoteBlobRef.current = new Blob(remoteChunksRef.current, { type: mimeType });
-          stoppedCountRef.current++;
-          if (stoppedCountRef.current >= expectedStopsRef.current) {
-            onBothRecordersStopped();
-          }
-        };
-        remoteRecorderRef.current = remoteRecorder;
-
-        // Start both simultaneously
-        localRecorder.start(1000);
-        remoteRecorder.start(1000);
-      } else {
-        localRecorder.start(1000);
-      }
+      localRecorder.start(1000);
 
       recordingStartRef.current = Date.now();
-      hasRecordedRef.current = true;
       setIsRecording(true);
       setRecordingDuration(0);
       recordingDurationIntervalRef.current = setInterval(() => {
@@ -596,23 +500,19 @@ export default function RoomPage() {
           setRecordingDuration(Date.now() - recordingStartRef.current);
         }
       }, 100);
-
-      // Notify other participants
-      callObjectRef.current.sendAppMessage({ type: "recording-started" });
-      toast({
-        title: "Recording started",
-        description: hasRemote ? "Recording both participants." : "Recording your audio only (no partner detected).",
-      });
+      return true;
     } catch (err: any) {
       toast({
         title: "Recording failed",
         description: err.message || "Could not start recording",
         variant: "destructive",
       });
+      return false;
     }
-  }, [toast, onBothRecordersStopped]);
+  }, [toast]);
 
-  const stopRecording = useCallback(() => {
+  // Helper: stop local mic recording and compute duration
+  const stopLocalMicRecording = useCallback(() => {
     if (recordingDurationIntervalRef.current) {
       clearInterval(recordingDurationIntervalRef.current);
       recordingDurationIntervalRef.current = null;
@@ -623,17 +523,105 @@ export default function RoomPage() {
     if (localRecorderRef.current && localRecorderRef.current.state !== "inactive") {
       localRecorderRef.current.stop();
     }
-    if (remoteRecorderRef.current && remoteRecorderRef.current.state !== "inactive") {
-      remoteRecorderRef.current.stop();
-    }
-    remoteRecorderRef.current = null;
-    remoteRecordingStreamRef.current = null;
-
-    // Notify other participants
-    if (callObjectRef.current) {
-      callObjectRef.current.sendAppMessage({ type: "recording-stopped" });
-    }
   }, []);
+
+  // Creator: start recording + tell partner to record their mic too
+  const startRecording = useCallback(async () => {
+    if (!callObjectRef.current) return;
+
+    localBlobRef.current = null;
+    partnerRecordingIdRef.current = null;
+
+    const ok = await startLocalMicRecording();
+    if (!ok) return;
+
+    hasRecordedRef.current = true;
+
+    // Tell partner to start recording their own mic
+    callObjectRef.current.sendAppMessage({ type: "start-recording" });
+    toast({
+      title: "Recording started",
+      description: "Both participants are now recording.",
+    });
+  }, [toast, startLocalMicRecording]);
+
+  // Creator: stop recording + tell partner to stop and upload
+  const stopRecording = useCallback(() => {
+    stopLocalMicRecording();
+    setBlobsReady(true);
+
+    // Tell partner to stop recording and upload their track
+    if (callObjectRef.current) {
+      callObjectRef.current.sendAppMessage({ type: "stop-recording" });
+    }
+  }, [stopLocalMicRecording]);
+
+  // Partner: upload their local recording as spk1
+  const uploadPartnerRecording = useCallback(async () => {
+    // Wait for blob from onstop handler
+    const start = Date.now();
+    while (!localBlobRef.current && Date.now() - start < 5000) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
+    const blob = localBlobRef.current;
+    if (!blob || blob.size === 0 || !roomId) return;
+
+    try {
+      const duration = finalDurationRef.current;
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const urlRes = await apiRequest("POST", "/api/recordings/upload-url", {
+        roomId,
+        fileName: `partner-${timestamp}.webm`,
+        duration,
+        fileSize: blob.size,
+        format: "webm",
+        sampleRate: 48000,
+        channels: 1,
+        recordingType: "remote",
+        speakerId: "spk1",
+      });
+      const { uploadUrl, recordingId } = await urlRes.json();
+      await uploadToS3WithRetry(uploadUrl, blob, "audio/webm");
+
+      // Tell creator our recording ID so they can process it
+      if (callObjectRef.current) {
+        callObjectRef.current.sendAppMessage({ type: "partner-upload-complete", recordingId });
+      }
+      toast({ title: "Recording uploaded", description: "Your recording has been saved." });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    }
+  }, [roomId, toast]);
+
+  // App-message handler — kept in ref to avoid stale closures
+  useEffect(() => {
+    messageHandlerRef.current = (msg: any) => {
+      const data = msg?.data;
+      if (!data?.type) return;
+
+      const isCreator = room?.createdBy === user?.id;
+
+      if (data.type === "start-recording" && !isCreator) {
+        // Partner: start recording own mic
+        localBlobRef.current = null;
+        startLocalMicRecording().then((ok) => {
+          if (ok) {
+            hasRecordedRef.current = true;
+            toast({ title: "Recording started", description: "Your partner started the recording." });
+          }
+        });
+      } else if (data.type === "stop-recording" && !isCreator) {
+        // Partner: stop recording and upload
+        stopLocalMicRecording();
+        toast({ title: "Recording stopped", description: "Uploading your audio..." });
+        uploadPartnerRecording();
+      } else if (data.type === "partner-upload-complete" && isCreator && data.recordingId) {
+        // Creator: store partner's recording ID for processing
+        partnerRecordingIdRef.current = data.recordingId;
+      }
+    };
+  }, [room, user, startLocalMicRecording, stopLocalMicRecording, uploadPartnerRecording, toast]);
 
   const copyRoomLink = () => {
     const url = `${window.location.origin}/room/${roomId}`;
@@ -710,12 +698,6 @@ export default function RoomPage() {
             <Badge variant="outline" className="gap-1 border-red-500 text-red-500">
               <Circle className="h-2 w-2 fill-current" />
               REC {formatDuration(recordingDuration)}
-            </Badge>
-          )}
-          {isRemoteRecording && !isRecording && (
-            <Badge variant="destructive" className="animate-pulse gap-1">
-              <Circle className="h-2 w-2 fill-current" />
-              Recording in progress
             </Badge>
           )}
           {isUploading && (
@@ -879,16 +861,18 @@ export default function RoomPage() {
               Copy Link
             </Button>
 
-            {isRecording ? (
+            {isRecording && room.createdBy === user?.id ? (
               <Button variant="outline" size="sm" onClick={stopRecording} className="border-red-500 text-red-500">
                 <Circle className="mr-2 h-3 w-3 fill-red-500" />
                 Stop Recording
               </Button>
+            ) : isRecording ? (
+              null /* Partner sees REC badge in header; no stop button */
             ) : failedUploadBlobs ? (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => uploadRecordings(failedUploadBlobs.local, failedUploadBlobs.remote)}
+                onClick={() => uploadRecordings(failedUploadBlobs.local)}
                 disabled={isUploading}
                 className="border-orange-500 text-orange-500"
               >
@@ -900,15 +884,13 @@ export default function RoomPage() {
                 variant="outline"
                 size="sm"
                 onClick={startRecording}
-                disabled={isUploading || !hasRemoteParticipant || isRemoteRecording || room.createdBy !== user?.id}
+                disabled={isUploading || !hasRemoteParticipant || room.createdBy !== user?.id}
                 title={
                   room.createdBy !== user?.id
                     ? "Only the room creator can start recording"
-                    : isRemoteRecording
-                      ? "Recording already in progress"
-                      : !hasRemoteParticipant
-                        ? "Waiting for partner to join with audio"
-                        : undefined
+                    : !hasRemoteParticipant
+                      ? "Waiting for partner to join with audio"
+                      : undefined
                 }
               >
                 <Circle className="mr-2 h-3 w-3" />
