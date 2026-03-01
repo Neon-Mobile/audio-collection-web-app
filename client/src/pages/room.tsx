@@ -108,6 +108,7 @@ export default function RoomPage() {
   const remoteBlobRef = useRef<Blob | null>(null);
 
   const recordingStartRef = useRef<number | null>(null);
+  const finalDurationRef = useRef<number>(0);
   const recordingDurationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
 
@@ -361,7 +362,7 @@ export default function RoomPage() {
 
     try {
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const duration = recordingDuration;
+      const duration = finalDurationRef.current;
 
       // Upload local track
       const localUrlRes = await apiRequest("POST", "/api/recordings/upload-url", {
@@ -422,7 +423,7 @@ export default function RoomPage() {
     } finally {
       setIsUploading(false);
     }
-  }, [roomId, recordingDuration, taskSession, toast]);
+  }, [roomId, taskSession, toast]);
 
   // Called when both recorders have stopped and blobs are ready
   const onBothRecordersStopped = useCallback(() => {
@@ -541,6 +542,7 @@ export default function RoomPage() {
       clearInterval(recordingDurationIntervalRef.current);
       recordingDurationIntervalRef.current = null;
     }
+    finalDurationRef.current = recordingStartRef.current ? Date.now() - recordingStartRef.current : 0;
     setIsRecording(false);
 
     if (localRecorderRef.current && localRecorderRef.current.state !== "inactive") {

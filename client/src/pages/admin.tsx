@@ -370,7 +370,7 @@ export default function Admin() {
     list.sort((a, b) => {
       switch (sortBy) {
         case "oldest":
-          return new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         case "task":
           return (TASK_TYPES.find((t) => t.id === a.taskType)?.name || "").localeCompare(
             TASK_TYPES.find((t) => t.id === b.taskType)?.name || ""
@@ -379,7 +379,7 @@ export default function Admin() {
           return a.status.localeCompare(b.status);
         case "newest":
         default:
-          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       }
     });
 
@@ -604,7 +604,7 @@ export default function Admin() {
                           <TableHead>Reviewer</TableHead>
                           <TableHead className="text-center">Paid</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead>Updated</TableHead>
+                          <TableHead>Created</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -646,7 +646,7 @@ export default function Admin() {
                                 {getStatusBadge(session.status)}
                               </TableCell>
                               <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                                {new Date(session.updatedAt).toLocaleString([], { month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                                {new Date(session.createdAt).toLocaleString([], { month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" })}
                               </TableCell>
                               <TableCell className="text-right">
                                 {session.status === "pending_review" && (
