@@ -142,8 +142,8 @@ export default function TaskPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/task-sessions"] });
-      setSessionId(null);
       toast({ title: "Task cancelled", description: "You can start over with a new partner." });
+      setLocation("/");
     },
     onError: (err: Error) => {
       toast({ title: "Failed to cancel", description: err.message, variant: "destructive" });
