@@ -121,8 +121,10 @@ export default function RoomPage() {
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [instructionsExpanded, setInstructionsExpanded] = useState(true);
-  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [failedUploadBlobs, setFailedUploadBlobs] = useState<{ local: Blob; remote: Blob | null } | null>(null);
+  const hasRecordedRef = useRef(false);
+  const [blobsReady, setBlobsReady] = useState(false);
 
   const inviteMutation = useMutation({
     mutationFn: async ({ roomId, email }: { roomId: string; email: string }) => {
@@ -166,12 +168,40 @@ export default function RoomPage() {
       const res = await apiRequest("PATCH", `/api/task-sessions/${sessionId}/complete`);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      if (callObjectRef.current) {
+        await callObjectRef.current.leave();
+        callObjectRef.current.destroy();
+        callObjectRef.current = null;
+      }
+      cleanup();
+      setCallState("idle");
       toast({ title: "Recording submitted!", description: "Your recording has been submitted for review." });
       setLocation("/");
     },
     onError: (err: Error) => {
       toast({ title: "Failed to complete task", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const cancelTaskMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const res = await apiRequest("PATCH", `/api/task-sessions/${sessionId}/cancel`);
+      return res.json();
+    },
+    onSuccess: async () => {
+      if (callObjectRef.current) {
+        await callObjectRef.current.leave();
+        callObjectRef.current.destroy();
+        callObjectRef.current = null;
+      }
+      cleanup();
+      setCallState("idle");
+      toast({ title: "Task cancelled", description: "You can start a new session from the dashboard." });
+      setLocation("/");
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to cancel task", description: err.message, variant: "destructive" });
     },
   });
 
@@ -410,8 +440,18 @@ export default function RoomPage() {
 
       toast({ title: "Recordings processed", description: `Both tracks saved to folder ${processedFolder}.` });
 
+      // Auto-complete task and leave call
       if (taskSession) {
-        setShowCompletionDialog(true);
+        completeTaskMutation.mutate(taskSession.id);
+      } else {
+        // No task session — just leave call
+        if (callObjectRef.current) {
+          await callObjectRef.current.leave();
+          callObjectRef.current.destroy();
+          callObjectRef.current = null;
+        }
+        cleanup();
+        setCallState("idle");
       }
     } catch (err: any) {
       setFailedUploadBlobs({ local: localBlob, remote: remoteBlob });
@@ -427,6 +467,12 @@ export default function RoomPage() {
 
   // Called when both recorders have stopped and blobs are ready
   const onBothRecordersStopped = useCallback(() => {
+    // Don't upload yet — wait for user to click "End Call & Submit"
+    setBlobsReady(true);
+  }, []);
+
+  // Triggered by "End Call & Submit" button
+  const submitAndEndCall = useCallback(() => {
     const localBlob = localBlobRef.current;
     const remoteBlob = remoteBlobRef.current;
     localBlobRef.current = null;
@@ -514,6 +560,7 @@ export default function RoomPage() {
       }
 
       recordingStartRef.current = Date.now();
+      hasRecordedRef.current = true;
       setIsRecording(true);
       setRecordingDuration(0);
       recordingDurationIntervalRef.current = setInterval(() => {
@@ -819,27 +866,58 @@ export default function RoomPage() {
                 <Loader2 className={`mr-2 h-3 w-3 ${isUploading ? "animate-spin" : "hidden"}`} />
                 Retry Upload
               </Button>
-            ) : (
+            ) : !blobsReady ? (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={startRecording}
-                disabled={isUploading || !hasRemoteParticipant}
-                title={!hasRemoteParticipant ? "Waiting for partner to join with audio" : undefined}
+                disabled={isUploading || !hasRemoteParticipant || isRemoteRecording || room.createdBy !== user?.id}
+                title={
+                  room.createdBy !== user?.id
+                    ? "Only the room creator can start recording"
+                    : isRemoteRecording
+                      ? "Recording already in progress"
+                      : !hasRemoteParticipant
+                        ? "Waiting for partner to join with audio"
+                        : undefined
+                }
               >
                 <Circle className="mr-2 h-3 w-3" />
                 Record Both
               </Button>
-            )}
+            ) : null}
 
-            <Button
-              variant="destructive"
-              size="lg"
-              onClick={leaveCall}
-              className="rounded-full h-14 w-14 p-0"
-            >
-              <PhoneOff className="h-6 w-6" />
-            </Button>
+            {blobsReady && !failedUploadBlobs ? (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={submitAndEndCall}
+                disabled={isUploading || completeTaskMutation.isPending}
+              >
+                {isUploading || completeTaskMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <PhoneOff className="mr-2 h-4 w-4" />
+                )}
+                End Call & Submit
+              </Button>
+            ) : (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  if (taskSession && !hasRecordedRef.current) {
+                    setShowCancelDialog(true);
+                  } else {
+                    leaveCall();
+                  }
+                }}
+                disabled={isUploading || isRecording}
+              >
+                <PhoneOff className="mr-2 h-4 w-4" />
+                End Call
+              </Button>
+            )}
           </div>
           {!hasRemoteParticipant && !isRecording && (
             <p className="text-xs text-muted-foreground text-center mt-2">
@@ -849,29 +927,30 @@ export default function RoomPage() {
         </footer>
       )}
 
-      {/* Task Completion Dialog */}
-      <AlertDialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
+      {/* Cancel Task Dialog */}
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Recordings saved!</AlertDialogTitle>
+            <AlertDialogTitle>End task without recording?</AlertDialogTitle>
             <AlertDialogDescription>
-              Both audio tracks have been processed. Submit this recording for admin review, or keep going to record another take.
+              You haven't made a recording yet. This will cancel the current task so you can start over and invite a new partner if needed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep Going</AlertDialogCancel>
+            <AlertDialogCancel>Go Back</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (taskSession) {
-                  completeTaskMutation.mutate(taskSession.id);
+                  cancelTaskMutation.mutate(taskSession.id);
                 }
               }}
-              disabled={completeTaskMutation.isPending}
+              disabled={cancelTaskMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {completeTaskMutation.isPending ? (
+              {cancelTaskMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
-              Submit for Review
+              End Task
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

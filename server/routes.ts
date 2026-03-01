@@ -857,6 +857,23 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/task-sessions/:id/cancel", requireApproved, async (req, res) => {
+    try {
+      const session = await storage.getTaskSessionById(req.params.id as string);
+      if (!session || session.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Task session not found" });
+      }
+      if (session.status === "pending_review" || session.status === "completed") {
+        return res.status(400).json({ error: "Cannot cancel a completed task" });
+      }
+      const updated = await storage.updateTaskSession(session.id, { status: "cancelled" });
+      res.json(updated);
+    } catch (error) {
+      console.error("Cancel task session error:", error);
+      res.status(500).json({ error: "Failed to cancel task session" });
+    }
+  });
+
   // ── Admin Routes ─────────────────────────────────────────────
 
   app.get("/api/admin/users", requireAdmin, async (_req, res) => {

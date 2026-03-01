@@ -16,7 +16,7 @@ export const TASK_TYPES = [
     name: "Whispered Conversation",
     description: "Have a quiet, whispered conversation with your partner.",
     hourlyRate: 30,
-    availableUntil: "2026-04-01",
+    availableUntil: "2026-03-03",
     requiresPartner: true,
     instructions: [
       "Find a quiet room with minimal background noise.",
@@ -30,7 +30,7 @@ export const TASK_TYPES = [
     name: "Whispered Conversation - English",
     description: "Have a quiet, whispered conversation in English with your partner.",
     hourlyRate: 30,
-    availableUntil: "2026-04-01",
+    availableUntil: "2026-03-03",
     requiresPartner: true,
     instructions: [
       "Find a quiet room with minimal background noise.",
@@ -45,7 +45,7 @@ export const TASK_TYPES = [
     name: "Whispered Conversation - Spanish",
     description: "Have a quiet, whispered conversation in Spanish with your partner.",
     hourlyRate: 30,
-    availableUntil: "2026-04-01",
+    availableUntil: "2026-03-03",
     requiresPartner: true,
     instructions: [
       "Find a quiet room with minimal background noise.",
@@ -60,7 +60,7 @@ export const TASK_TYPES = [
     name: "Whispered Conversation - Portuguese",
     description: "Have a quiet, whispered conversation in Portuguese with your partner.",
     hourlyRate: 30,
-    availableUntil: "2026-04-01",
+    availableUntil: "2026-03-03",
     requiresPartner: true,
     instructions: [
       "Find a quiet room with minimal background noise.",
