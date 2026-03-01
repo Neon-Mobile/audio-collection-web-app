@@ -315,7 +315,22 @@ export default function RoomPage() {
 
       callObject.on("participant-joined", () => updateParticipants(callObject));
       callObject.on("participant-updated", () => updateParticipants(callObject));
-      callObject.on("participant-left", () => updateParticipants(callObject));
+      callObject.on("participant-left", (event) => {
+        updateParticipants(callObject);
+        // If partner left, leave the call and go home
+        const remaining = callObject.participants();
+        const remoteCount = Object.values(remaining).filter((p: DailyParticipant) => !p.local).length;
+        if (remoteCount === 0 && event?.participant && !event.participant.local) {
+          callObject.leave().then(() => {
+            callObject.destroy();
+            callObjectRef.current = null;
+          }).catch(() => {});
+          cleanup();
+          setCallState("idle");
+          toast({ title: "Partner left", description: "Your partner has ended the call." });
+          setLocation("/");
+        }
+      });
 
       // Play remote audio via track-started/stopped events
       callObject.on("track-started", handleTrackStarted);
@@ -801,7 +816,7 @@ export default function RoomPage() {
               <div className="flex items-center gap-3 p-4 rounded-lg border-2 border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-700">
                 <Info className="h-5 w-5 text-amber-600 shrink-0" />
                 <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-                  You are not being recorded. Recording only starts when you press <strong>"Record Both"</strong> below.
+                  You are not being recorded. Recording only starts when {room.createdBy === user?.id ? 'you press' : 'your partner presses'} <strong>"Record Both"</strong>{room.createdBy === user?.id ? ' below' : ''}.
                 </p>
               </div>
             )}
