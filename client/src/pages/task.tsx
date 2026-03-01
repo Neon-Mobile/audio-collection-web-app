@@ -76,7 +76,7 @@ export default function TaskPage() {
   useEffect(() => {
     if (existingSessions && taskType && !sessionId) {
       const active = existingSessions.find(
-        (s) => s.taskType === taskType && s.status !== "completed" && s.status !== "pending_review"
+        (s) => s.taskType === taskType && s.status !== "completed" && s.status !== "pending_review" && s.status !== "cancelled"
       );
       if (active) {
         setSessionId(active.id);
