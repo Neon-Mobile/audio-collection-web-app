@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Copy, LogOut, Shield, Link2, Check, X, ArrowRight, Mic, MessageCircle, DollarSign, Users, Calendar } from "lucide-react";
+import { Loader2, Copy, LogOut, Shield, Link2, Check, CheckCircle2, X, ArrowRight, Mic, MessageCircle, DollarSign, Users, Calendar } from "lucide-react";
 import { NotificationBell } from "@/components/notification-bell";
 
 interface PendingInvitation {
@@ -150,8 +150,9 @@ export default function Dashboard() {
     setLocation("/login");
   };
 
-  const activeSessions = taskSessions.filter((s) => s.status !== "completed" && s.status !== "pending_review");
+  const activeSessions = taskSessions.filter((s) => s.status !== "completed" && s.status !== "pending_review" && s.status !== "cancelled");
   const pendingReviewSessions = taskSessions.filter((s) => s.status === "pending_review");
+  const completedSessions = taskSessions.filter((s) => s.status === "completed");
 
   return (
     <div className="min-h-screen bg-background">
@@ -378,6 +379,51 @@ export default function Dashboard() {
                               </div>
                             </div>
                           </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Completed Tasks */}
+        {completedSessions.length > 0 && (
+          <>
+            <Separator />
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight mb-4">Completed</h2>
+              <div className="space-y-2">
+                {completedSessions.map((session) => {
+                  const taskDef = TASK_TYPES.find((t) => t.id === session.taskType);
+                  const Icon = TASK_ICONS[session.taskType] || Mic;
+                  const completedDate = new Date(session.updatedAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  });
+                  return (
+                    <Card key={session.id} className="opacity-80">
+                      <CardContent className="py-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-green-50 dark:bg-green-950/30 shrink-0">
+                              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">{taskDef?.name || session.taskType}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge className="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-950 dark:text-green-300 font-normal">Approved</Badge>
+                                {session.partnerEmail && (
+                                  <span className="text-xs text-muted-foreground">
+                                    with {session.partnerEmail}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <span className="text-xs text-muted-foreground">{completedDate}</span>
                         </div>
                       </CardContent>
                     </Card>
