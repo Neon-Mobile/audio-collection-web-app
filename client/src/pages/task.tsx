@@ -26,6 +26,7 @@ import {
   Shield,
   DollarSign,
   Users,
+  XCircle,
 } from "lucide-react";
 
 interface TaskSession {
@@ -131,6 +132,21 @@ export default function TaskPage() {
     },
     onError: (err: Error) => {
       toast({ title: "Failed to create room", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const cancelSessionMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("PATCH", `/api/task-sessions/${sessionId}/cancel`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/task-sessions"] });
+      setSessionId(null);
+      toast({ title: "Task cancelled", description: "You can start over with a new partner." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Failed to cancel", description: err.message, variant: "destructive" });
     },
   });
 
@@ -532,6 +548,26 @@ export default function TaskPage() {
               </Button>
             </CardContent>
           </Card>
+        )}
+
+        {/* Cancel Task */}
+        {hasSession && (
+          <div className="flex justify-center pt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-destructive"
+              onClick={() => cancelSessionMutation.mutate()}
+              disabled={cancelSessionMutation.isPending}
+            >
+              {cancelSessionMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <XCircle className="mr-2 h-4 w-4" />
+              )}
+              Cancel Task & Start Over
+            </Button>
+          </div>
         )}
       </main>
     </div>
