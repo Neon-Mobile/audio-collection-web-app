@@ -89,6 +89,7 @@ export default function RoomPage() {
   const callObjectRef = useRef<DailyCall | null>(null);
   const joinTimeRef = useRef<number | null>(null);
   const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const partnerLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -308,22 +309,39 @@ export default function RoomPage() {
         cleanup();
       });
 
-      callObject.on("participant-joined", () => updateParticipants(callObject));
+      callObject.on("participant-joined", () => {
+        updateParticipants(callObject);
+        // Partner reconnected — cancel any pending leave timer
+        if (partnerLeaveTimerRef.current) {
+          clearTimeout(partnerLeaveTimerRef.current);
+          partnerLeaveTimerRef.current = null;
+          toast({ title: "Partner reconnected", description: "Connection restored." });
+        }
+      });
       callObject.on("participant-updated", () => updateParticipants(callObject));
       callObject.on("participant-left", (event) => {
         updateParticipants(callObject);
-        // If partner left, leave the call and go home
+        // If partner left, wait 30s before leaving (they may reconnect)
         const remaining = callObject.participants();
         const remoteCount = Object.values(remaining).filter((p: DailyParticipant) => !p.local).length;
         if (remoteCount === 0 && event?.participant && !event.participant.local) {
-          callObject.leave().then(() => {
-            callObject.destroy();
-            callObjectRef.current = null;
-          }).catch(() => {});
-          cleanup();
-          setCallState("idle");
-          toast({ title: "Partner left", description: "Your partner has ended the call." });
-          setLocation("/");
+          toast({ title: "Partner disconnected", description: "Waiting 30 seconds for them to reconnect..." });
+          partnerLeaveTimerRef.current = setTimeout(() => {
+            partnerLeaveTimerRef.current = null;
+            // Check again — they may have rejoined
+            const current = callObject.participants();
+            const stillAlone = Object.values(current).filter((p: DailyParticipant) => !p.local).length === 0;
+            if (stillAlone) {
+              callObject.leave().then(() => {
+                callObject.destroy();
+                callObjectRef.current = null;
+              }).catch(() => {});
+              cleanup();
+              setCallState("idle");
+              toast({ title: "Partner left", description: "Your partner did not reconnect." });
+              setLocation("/");
+            }
+          }, 30000);
         }
       });
 
@@ -369,6 +387,10 @@ export default function RoomPage() {
     if (recordingDurationIntervalRef.current) {
       clearInterval(recordingDurationIntervalRef.current);
       recordingDurationIntervalRef.current = null;
+    }
+    if (partnerLeaveTimerRef.current) {
+      clearTimeout(partnerLeaveTimerRef.current);
+      partnerLeaveTimerRef.current = null;
     }
     // Clean up remote audio elements
     audioElementsRef.current.forEach((audioEl) => {
@@ -638,6 +660,7 @@ export default function RoomPage() {
       }
       if (durationIntervalRef.current) clearInterval(durationIntervalRef.current);
       if (recordingDurationIntervalRef.current) clearInterval(recordingDurationIntervalRef.current);
+      if (partnerLeaveTimerRef.current) clearTimeout(partnerLeaveTimerRef.current);
     };
   }, []);
 
