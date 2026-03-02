@@ -441,10 +441,22 @@ export default function RoomPage() {
       const processRes = await apiRequest("POST", `/api/recordings/${localRecId}/process`);
       const { processedFolder } = await processRes.json();
 
-      // Process partner's track into the same folder (if partner uploaded)
-      const partnerRecId = partnerRecordingIdRef.current;
+      // Wait for partner's recording ID (they're uploading in parallel)
+      let partnerRecId = partnerRecordingIdRef.current;
+      if (!partnerRecId) {
+        toast({ title: "Waiting for partner's recording...", description: "Your partner is still uploading." });
+        const waitStart = Date.now();
+        while (!partnerRecordingIdRef.current && Date.now() - waitStart < 30000) {
+          await new Promise((r) => setTimeout(r, 500));
+        }
+        partnerRecId = partnerRecordingIdRef.current;
+      }
+
+      // Process partner's track into the same folder
       if (partnerRecId) {
         await apiRequest("POST", `/api/recordings/${partnerRecId}/process`, { folderNumber: processedFolder });
+      } else {
+        console.warn("Partner recording ID never received — only creator track was processed");
       }
 
       toast({ title: "Recordings processed", description: `Tracks saved to folder ${processedFolder}.` });
