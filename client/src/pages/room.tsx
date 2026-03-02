@@ -417,11 +417,14 @@ export default function RoomPage() {
     setIsUploading(true);
     setFailedUploadBlobs(null);
 
+    let processedFolder: string | null = null;
+    let creatorUploadOk = false;
+
+    // Step 1: Upload and process creator's track
     try {
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const duration = finalDurationRef.current;
 
-      // Upload creator's local track
       const localUrlRes = await apiRequest("POST", "/api/recordings/upload-url", {
         roomId,
         fileName: `local-${timestamp}.webm`,
@@ -436,15 +439,27 @@ export default function RoomPage() {
       const { uploadUrl: localUploadUrl, recordingId: localRecId } = await localUrlRes.json();
       await uploadToS3WithRetry(localUploadUrl, localBlob, "audio/webm");
 
-      // Process creator's track (creates the folder number)
       toast({ title: "Recording uploaded", description: "Processing audio..." });
       const processRes = await apiRequest("POST", `/api/recordings/${localRecId}/process`);
-      const { processedFolder } = await processRes.json();
+      const processData = await processRes.json();
+      processedFolder = processData.processedFolder;
+      creatorUploadOk = true;
+    } catch (err: any) {
+      setFailedUploadBlobs({ local: localBlob });
+      toast({
+        title: "Your upload failed",
+        description: err.message || "Could not upload your recording. You can retry. Partner's track is still being saved.",
+        variant: "destructive",
+      });
+    }
 
-      // Wait for partner's recording ID (they're uploading in parallel)
+    // Step 2: Always try to process partner's track (their upload already happened independently)
+    try {
       let partnerRecId = partnerRecordingIdRef.current;
       if (!partnerRecId) {
-        toast({ title: "Waiting for partner's recording...", description: "Your partner is still uploading." });
+        if (creatorUploadOk) {
+          toast({ title: "Waiting for partner's recording...", description: "Your partner is still uploading." });
+        }
         const waitStart = Date.now();
         while (!partnerRecordingIdRef.current && Date.now() - waitStart < 30000) {
           await new Promise((r) => setTimeout(r, 500));
@@ -452,16 +467,26 @@ export default function RoomPage() {
         partnerRecId = partnerRecordingIdRef.current;
       }
 
-      // Process partner's track into the same folder
       if (partnerRecId) {
-        await apiRequest("POST", `/api/recordings/${partnerRecId}/process`, { folderNumber: processedFolder });
+        if (processedFolder) {
+          // Creator succeeded — process partner into the same folder
+          await apiRequest("POST", `/api/recordings/${partnerRecId}/process`, { folderNumber: processedFolder });
+        } else {
+          // Creator failed — process partner into its own folder so it's not lost
+          const partnerProcessRes = await apiRequest("POST", `/api/recordings/${partnerRecId}/process`);
+          const partnerData = await partnerProcessRes.json();
+          processedFolder = partnerData.processedFolder;
+        }
       } else {
-        console.warn("Partner recording ID never received — only creator track was processed");
+        console.warn("Partner recording ID never received");
       }
+    } catch (partnerErr: any) {
+      console.warn("Failed to process partner's track:", partnerErr.message);
+    }
 
+    // Step 3: Complete task and leave call (only if creator upload succeeded)
+    if (creatorUploadOk) {
       toast({ title: "Recordings processed", description: `Tracks saved to folder ${processedFolder}.` });
-
-      // Auto-complete task and leave call
       if (taskSession) {
         completeTaskMutation.mutate(taskSession.id);
       } else {
@@ -473,16 +498,9 @@ export default function RoomPage() {
         cleanup();
         setCallState("idle");
       }
-    } catch (err: any) {
-      setFailedUploadBlobs({ local: localBlob });
-      toast({
-        title: "Upload failed",
-        description: err.message || "Could not upload recordings. You can retry without re-recording.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploading(false);
     }
+
+    setIsUploading(false);
   }, [roomId, taskSession, toast]);
 
   // Triggered by "End Call & Submit" button (creator only)
