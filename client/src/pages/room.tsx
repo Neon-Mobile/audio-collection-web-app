@@ -278,7 +278,7 @@ export default function RoomPage() {
           userMediaAudioConstraints: {
             sampleRate: 48000,
             channelCount: 1,
-            echoCancellation: false,
+            echoCancellation: true,
             noiseSuppression: false,
             autoGainControl: false,
           },
