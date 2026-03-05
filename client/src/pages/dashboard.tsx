@@ -234,7 +234,9 @@ export default function Dashboard() {
           <div className="space-y-2">
             {TASK_TYPES.filter(t => !("archived" in t && t.archived)).map((task) => {
               const Icon = TASK_ICONS[task.id] || Mic;
+              const isPaused = "paused" in task && task.paused;
               const isExpired = new Date(task.availableUntil) < new Date();
+              const isDisabled = isExpired || isPaused;
               const deadlineDate = new Date(task.availableUntil).toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
@@ -244,11 +246,11 @@ export default function Dashboard() {
                 <div
                   key={task.id}
                   className={`group rounded-xl border bg-card p-4 transition-all duration-200 ${
-                    isExpired
+                    isDisabled
                       ? "opacity-50"
                       : "cursor-pointer hover:shadow-md hover:border-primary/20 hover:-translate-y-px"
                   }`}
-                  onClick={() => !isExpired && setLocation(`/task/${task.id}`)}
+                  onClick={() => !isDisabled && setLocation(`/task/${task.id}`)}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -266,7 +268,9 @@ export default function Dashboard() {
                           </span>
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3.5 w-3.5" />
-                            {isExpired ? (
+                            {isPaused ? (
+                              <span className="text-muted-foreground font-medium">Currently unavailable</span>
+                            ) : isExpired ? (
                               <span className="text-destructive font-medium">Expired</span>
                             ) : (
                               <>Until {deadlineDate}</>
@@ -281,7 +285,7 @@ export default function Dashboard() {
                         </div>
                       </div>
                     </div>
-                    {!isExpired && (
+                    {!isDisabled && (
                       <Button variant="outline" size="sm" className="shrink-0 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
                         Start Task
                         <ArrowRight className="ml-2 h-3.5 w-3.5" />

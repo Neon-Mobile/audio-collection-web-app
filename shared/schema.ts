@@ -27,6 +27,7 @@ export const TASK_TYPES = [
   },
   {
     id: "whispered-english",
+    paused: true,
     name: "Whispered Conversation - English",
     description: "Have a quiet, whispered conversation in English with your partner.",
     hourlyRate: 30,
@@ -42,6 +43,7 @@ export const TASK_TYPES = [
   },
   {
     id: "whispered-spanish",
+    paused: true,
     name: "Whispered Conversation - Spanish",
     description: "Have a quiet, whispered conversation in Spanish with your partner.",
     hourlyRate: 30,
@@ -57,6 +59,7 @@ export const TASK_TYPES = [
   },
   {
     id: "whispered-portuguese",
+    paused: true,
     name: "Whispered Conversation - Portuguese",
     description: "Have a quiet, whispered conversation in Portuguese with your partner.",
     hourlyRate: 30,

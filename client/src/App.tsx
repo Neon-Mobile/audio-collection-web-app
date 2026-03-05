@@ -56,12 +56,28 @@ function Router() {
   );
 }
 
+const SITE_PAUSED = true;
+
+function PausedOverlay() {
+  return (
+    <div className="fixed inset-0 z-[9999] bg-background/80 backdrop-blur-sm flex items-center justify-center">
+      <div className="bg-card border rounded-2xl shadow-lg p-8 max-w-md mx-4 text-center">
+        <h2 className="text-xl font-semibold mb-3">Temporarily Paused</h2>
+        <p className="text-muted-foreground">
+          The site and all tasks are temporarily paused. Please check back later.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
           <Toaster />
+          {SITE_PAUSED && <PausedOverlay />}
           <Router />
         </TooltipProvider>
       </AuthProvider>
